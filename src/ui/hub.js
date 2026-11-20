@@ -34,7 +34,7 @@ const HUB_VIEWS = {
         <button class="hub-tile" onclick="hubRandom()"><span>🎲</span><b>Vida aleatória</b><small>tudo sorteado</small></button>
         <button class="hub-tile" onclick="showHub('slots')"><span>📂</span><b>Vidas salvas</b><small>${slots.length}/${MAX_SLOTS} slots</small></button>
         <button class="hub-tile" onclick="showHub('hall')"><span>🏛️</span><b>Hall dos legados</b><small>${hall.lives.length} vida(s) · ${Object.keys(hall.ach).length} conquista(s)</small></button>
-        <button class="hub-tile" onclick="showHub('settings')"><span>⚙️</span><b>Ajustes</b><small>som, tema, linguagem</small></button>
+        <button class="hub-tile" onclick="showHub('settings')"><span>⚙️</span><b>Ajustes</b><small>tela cheia, som, tema</small></button>
         <button class="hub-tile" onclick="document.getElementById('hubimp').click()"><span>⬆️</span><b>Importar</b><small>arquivo .json</small></button>
         <button class="hub-tile" onclick="UI.guide()"><span>📖</span><b>Guia rápido</b><small>como jogar em 5 passos</small></button>
       </div>
@@ -65,6 +65,8 @@ const HUB_VIEWS = {
   },
   settings(){
     return `${hubBack()}<h2 class="hub-h">⚙️ Ajustes</h2><div class="choices">
+      ${FS.settingsHTML("showHub('settings')")}
+      <div class="section-label">🔊 Som e jogo</div>
       <button onclick="Sound.toggle();showHub('settings')">${SETTINGS.sound ? "🔊 Som ligado" : "🔇 Som desligado"}</button>
       <div class="form" style="padding:0 4px"><label>Volume</label><input type="range" min="0" max="1" step="0.05" value="${SETTINGS.volume}" oninput="Sound.setVolume(+this.value)" onchange="Sound.play('click')" style="padding:0"></div>
       <button onclick="UI.theme()">🌓 Alternar tema claro/escuro</button>

@@ -1846,7 +1846,7 @@ function emit(name, data){ for (const fn of BUS[name] || []) { try { fn(data); }
 "use strict";
 /* core/settings.js — preferências do jogador (por dispositivo, não vão no save).
    lang: "forte" (falas realistas com palavrões moderados) | "leve" (filtrado). */
-const SETTINGS = { lang:"forte", sound:true, volume:0.55, loading:true };
+const SETTINGS = { lang:"forte", sound:true, volume:0.55, loading:true, fullscreen:false }; // fullscreen: abrir sempre em tela cheia
 try { Object.assign(SETTINGS, JSON.parse(localStorage.getItem("claudilife.settings") || "{}")); } catch(e){}
 function saveSettings(){ try { localStorage.setItem("claudilife.settings", JSON.stringify(SETTINGS)); } catch(e){} }
 </script>
@@ -8094,12 +8094,36 @@ const FS = (() => {
     pseudo = false; apply(); Sound.play("collapse");
   }
   function toggle(){ return active() ? exit() : enter(); }
+  /* Preferência "abrir sempre em tela cheia": o modo app (sem rolagem
+     acidental) liga na hora; a tela cheia nativa só pode ser pedida num
+     gesto do usuário, então é solicitada no PRIMEIRO toque/clique. */
+  function setAlways(on){
+    SETTINGS.fullscreen = !!on; saveSettings();
+    if (on && !active()) enter(); else apply();
+    return SETTINGS.fullscreen;
+  }
+  if (SETTINGS.fullscreen){
+    pseudo = true;
+    const firstTap = async () => {
+      removeEventListener("pointerdown", firstTap, true);
+      if (!nativeEl() && nativeOk()){ try { await (root.requestFullscreen ? root.requestFullscreen({ navigationUI:"hide" }) : root.webkitRequestFullscreen()); } catch(e){} }
+      apply();
+    };
+    addEventListener("pointerdown", firstTap, true);
+  }
   d.addEventListener("fullscreenchange", apply); d.addEventListener("webkitfullscreenchange", apply);
   if (typeof matchMedia === "function"){ const mq = matchMedia("(display-mode: standalone)"); mq.addEventListener ? mq.addEventListener("change", apply) : mq.addListener?.(apply); }
   // F11/ESC também passam por aqui: o "F" alterna (fora de campos de texto)
   d.addEventListener("keydown", e => { if (e.key === "f" && !e.ctrlKey && !e.metaKey && !/input|textarea|select/i.test(e.target.tagName) && !d.querySelector("#modalRoot .escgrid")) toggle(); });
   setTimeout(apply, 0);
-  return { toggle, enter, exit, active, apply };
+  /* Botões de configuração (hub e menu do jogo). */
+  function settingsHTML(after){
+    return `<div class="section-label">📱 Tela</div>
+      <button onclick="FS.toggle().then(()=>${after})">${active() ? "🗗 Sair da tela cheia" : "⛶ Entrar em tela cheia agora"}<small>${nativeOk() ? "tela cheia do aparelho" : "este navegador não permite tela cheia nativa: usa o modo app (sem rolagem acidental)"}</small></button>
+      <button onclick="FS.setAlways(!SETTINGS.fullscreen);${after}">${SETTINGS.fullscreen ? "✅" : "⬜"} Abrir sempre em tela cheia<small>ativa ao abrir o jogo (no 1º toque, no celular)</small></button>
+      ${/iPhone|iPod/.test(navigator.userAgent) && !standalone() ? `<div class="oddsline">No iPhone, a tela cheia total só existe instalando o jogo: <b>Compartilhar → Adicionar à Tela de Início</b>.</div>` : ""}`;
+  }
+  return { toggle, enter, exit, active, apply, setAlways, settingsHTML };
 })();
 const FS_ICON = {
   enter: `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>`,
@@ -8893,7 +8917,8 @@ const UI = {
       <button onclick="saveGame();UI.close()">💾 Salvar agora</button>
       <button onclick="exportSave()">⬇️ Exportar save (JSON)</button>
       <button onclick="document.getElementById('imp').click()">⬆️ Importar save</button>
-      <button onclick="FS.toggle();UI.close()">${FS.active() ? "🗗 Sair da tela cheia" : "⛶ Tela cheia"}<small>no celular sem suporte nativo: modo app sem rolagem acidental</small></button>
+      ${FS.settingsHTML("UI.menu()")}
+      <div class="section-label">🎮 Jogo</div>
       <button onclick="UI.close();UI.guide()">📖 Guia rápido</button>
       <button onclick="saveGame(true);showHub('home')">🏠 Menu principal<small>vidas salvas, hall dos legados, nova vida</small></button>
       <button onclick="UI.beauty('style')">💇 Aparência e visão</button>
@@ -9220,7 +9245,7 @@ const HUB_VIEWS = {
         <button class="hub-tile" onclick="hubRandom()"><span>🎲</span><b>Vida aleatória</b><small>tudo sorteado</small></button>
         <button class="hub-tile" onclick="showHub('slots')"><span>📂</span><b>Vidas salvas</b><small>${slots.length}/${MAX_SLOTS} slots</small></button>
         <button class="hub-tile" onclick="showHub('hall')"><span>🏛️</span><b>Hall dos legados</b><small>${hall.lives.length} vida(s) · ${Object.keys(hall.ach).length} conquista(s)</small></button>
-        <button class="hub-tile" onclick="showHub('settings')"><span>⚙️</span><b>Ajustes</b><small>som, tema, linguagem</small></button>
+        <button class="hub-tile" onclick="showHub('settings')"><span>⚙️</span><b>Ajustes</b><small>tela cheia, som, tema</small></button>
         <button class="hub-tile" onclick="document.getElementById('hubimp').click()"><span>⬆️</span><b>Importar</b><small>arquivo .json</small></button>
         <button class="hub-tile" onclick="UI.guide()"><span>📖</span><b>Guia rápido</b><small>como jogar em 5 passos</small></button>
       </div>
@@ -9251,6 +9276,8 @@ const HUB_VIEWS = {
   },
   settings(){
     return `${hubBack()}<h2 class="hub-h">⚙️ Ajustes</h2><div class="choices">
+      ${FS.settingsHTML("showHub('settings')")}
+      <div class="section-label">🔊 Som e jogo</div>
       <button onclick="Sound.toggle();showHub('settings')">${SETTINGS.sound ? "🔊 Som ligado" : "🔇 Som desligado"}</button>
       <div class="form" style="padding:0 4px"><label>Volume</label><input type="range" min="0" max="1" step="0.05" value="${SETTINGS.volume}" oninput="Sound.setVolume(+this.value)" onchange="Sound.play('click')" style="padding:0"></div>
       <button onclick="UI.theme()">🌓 Alternar tema claro/escuro</button>
@@ -10065,7 +10092,8 @@ function darkTest(n = 40){
       if (k === "prison"){ sendToPrison(8, "fraude financeira corporativa"); S.prison.courses.law = { p:60, done:false }; S.prison.remit = 0.4; render(); window.scrollTo(0, 0); }
       if (k === "spouse"){ const r = makePartner(); r.role = "fiance"; r.wealth = 3; S.rels.push(r); marryWith(r.uid, "simple", "total"); TAB = "rels"; render(); UI.person(r.uid); }
       if (k === "beauty"){ look().visionTested = true; look().myopia = true; setFrame("modern"); render(); UI.beauty("eyes"); }
-      if (["hub","create","slots","hall"].includes(k)) showHub(k === "hub" ? "home" : k);
+      if (["hub","create","slots","hall","settings"].includes(k)) showHub(k === "hub" ? "home" : k);
+      if (k === "menu") UI.menu();
       if (k === "pick"){ showHub("create"); hubPick("country"); }
       if (k === "gig"){ startGig("streamer"); S.gig.audience = 3400; TAB = "career"; render(); }
       if (k === "dark"){ S.money += priceOf(1e5); buyWeapon("tactical"); awakenDark("code"); dark().urge = 64; dark().heat = 38; dark().clues = 2; TAB = "acts"; render(); }

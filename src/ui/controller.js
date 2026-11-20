@@ -116,7 +116,8 @@ const UI = {
       <button onclick="saveGame();UI.close()">💾 Salvar agora</button>
       <button onclick="exportSave()">⬇️ Exportar save (JSON)</button>
       <button onclick="document.getElementById('imp').click()">⬆️ Importar save</button>
-      <button onclick="FS.toggle();UI.close()">${FS.active() ? "🗗 Sair da tela cheia" : "⛶ Tela cheia"}<small>no celular sem suporte nativo: modo app sem rolagem acidental</small></button>
+      ${FS.settingsHTML("UI.menu()")}
+      <div class="section-label">🎮 Jogo</div>
       <button onclick="UI.close();UI.guide()">📖 Guia rápido</button>
       <button onclick="saveGame(true);showHub('home')">🏠 Menu principal<small>vidas salvas, hall dos legados, nova vida</small></button>
       <button onclick="UI.beauty('style')">💇 Aparência e visão</button>

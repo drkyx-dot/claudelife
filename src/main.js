@@ -63,7 +63,8 @@
       if (k === "prison"){ sendToPrison(8, "fraude financeira corporativa"); S.prison.courses.law = { p:60, done:false }; S.prison.remit = 0.4; render(); window.scrollTo(0, 0); }
       if (k === "spouse"){ const r = makePartner(); r.role = "fiance"; r.wealth = 3; S.rels.push(r); marryWith(r.uid, "simple", "total"); TAB = "rels"; render(); UI.person(r.uid); }
       if (k === "beauty"){ look().visionTested = true; look().myopia = true; setFrame("modern"); render(); UI.beauty("eyes"); }
-      if (["hub","create","slots","hall"].includes(k)) showHub(k === "hub" ? "home" : k);
+      if (["hub","create","slots","hall","settings"].includes(k)) showHub(k === "hub" ? "home" : k);
+      if (k === "menu") UI.menu();
       if (k === "pick"){ showHub("create"); hubPick("country"); }
       if (k === "gig"){ startGig("streamer"); S.gig.audience = 3400; TAB = "career"; render(); }
       if (k === "dark"){ S.money += priceOf(1e5); buyWeapon("tactical"); awakenDark("code"); dark().urge = 64; dark().heat = 38; dark().clues = 2; TAB = "acts"; render(); }

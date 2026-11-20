@@ -45,12 +45,36 @@ const FS = (() => {
     pseudo = false; apply(); Sound.play("collapse");
   }
   function toggle(){ return active() ? exit() : enter(); }
+  /* Preferência "abrir sempre em tela cheia": o modo app (sem rolagem
+     acidental) liga na hora; a tela cheia nativa só pode ser pedida num
+     gesto do usuário, então é solicitada no PRIMEIRO toque/clique. */
+  function setAlways(on){
+    SETTINGS.fullscreen = !!on; saveSettings();
+    if (on && !active()) enter(); else apply();
+    return SETTINGS.fullscreen;
+  }
+  if (SETTINGS.fullscreen){
+    pseudo = true;
+    const firstTap = async () => {
+      removeEventListener("pointerdown", firstTap, true);
+      if (!nativeEl() && nativeOk()){ try { await (root.requestFullscreen ? root.requestFullscreen({ navigationUI:"hide" }) : root.webkitRequestFullscreen()); } catch(e){} }
+      apply();
+    };
+    addEventListener("pointerdown", firstTap, true);
+  }
   d.addEventListener("fullscreenchange", apply); d.addEventListener("webkitfullscreenchange", apply);
   if (typeof matchMedia === "function"){ const mq = matchMedia("(display-mode: standalone)"); mq.addEventListener ? mq.addEventListener("change", apply) : mq.addListener?.(apply); }
   // F11/ESC também passam por aqui: o "F" alterna (fora de campos de texto)
   d.addEventListener("keydown", e => { if (e.key === "f" && !e.ctrlKey && !e.metaKey && !/input|textarea|select/i.test(e.target.tagName) && !d.querySelector("#modalRoot .escgrid")) toggle(); });
   setTimeout(apply, 0);
-  return { toggle, enter, exit, active, apply };
+  /* Botões de configuração (hub e menu do jogo). */
+  function settingsHTML(after){
+    return `<div class="section-label">📱 Tela</div>
+      <button onclick="FS.toggle().then(()=>${after})">${active() ? "🗗 Sair da tela cheia" : "⛶ Entrar em tela cheia agora"}<small>${nativeOk() ? "tela cheia do aparelho" : "este navegador não permite tela cheia nativa: usa o modo app (sem rolagem acidental)"}</small></button>
+      <button onclick="FS.setAlways(!SETTINGS.fullscreen);${after}">${SETTINGS.fullscreen ? "✅" : "⬜"} Abrir sempre em tela cheia<small>ativa ao abrir o jogo (no 1º toque, no celular)</small></button>
+      ${/iPhone|iPod/.test(navigator.userAgent) && !standalone() ? `<div class="oddsline">No iPhone, a tela cheia total só existe instalando o jogo: <b>Compartilhar → Adicionar à Tela de Início</b>.</div>` : ""}`;
+  }
+  return { toggle, enter, exit, active, apply, setAlways, settingsHTML };
 })();
 const FS_ICON = {
   enter: `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>`,
