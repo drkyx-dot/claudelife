@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ClaudiLife — Simulador de Vida</title>
+<meta name="description" content="ClaudiLife: simulador de vida completo, do nascimento ao legado. Carreira, economia, crime, relacionamentos, lutas e muito mais.">
+<meta name="theme-color" content="#f2f3f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0f15" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ClaudiLife">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧬</text></svg>">
+<!-- Entrada de DESENVOLVIMENTO: carrega os módulos de src/ em ordem.
+     Para um arquivo único distribuível: python3 tools/build.py → dist/claudilife.html
+     A ORDEM abaixo é a fonte da verdade do bundle (o build lê estas tags). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+<link rel="stylesheet" href="src/styles/tokens.css">
+<link rel="stylesheet" href="src/styles/layout.css">
+<link rel="stylesheet" href="src/styles/components.css">
+<link rel="stylesheet" href="src/styles/animations.css">
+<link rel="stylesheet" href="src/styles/game.css">
+<link rel="stylesheet" href="src/styles/mobile.css">
+</head>
+<body>
+<div id="app">
+  <header class="top" id="hud"></header>
+  <main id="view"></main>
+</div>
+<footer class="age" id="agebar"></footer>
+<div id="modalRoot"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="yearbadge" id="yearbadge" aria-hidden="true"></div>
+<div id="floaters" aria-hidden="true"></div>
+<div id="loading" role="progressbar" aria-label="Carregando"></div>
+<div id="hub" role="dialog" aria-label="Menu principal"></div>
+
+<!-- dev: erros de script aparecem na tela (útil em testes headless) -->
+<script>addEventListener("error", e => { const d = document.createElement("pre"); d.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:999;background:#b00020;color:#fff;padding:10px;font:12px monospace;white-space:pre-wrap;border-radius:8px"; d.textContent = `${e.message}\n${(e.filename||"").split("/").slice(-2).join("/")}:${e.lineno}`; document.body.appendChild(d); });</script>
+<!-- 1. dados (catálogos puros) -->
+<script src="src/data/world.js"></script>
+<script src="src/data/education.js"></script>
+<script src="src/data/careers.js"></script>
+<script src="src/data/careers_ext.js"></script>
+<script src="src/data/assets.js"></script>
+<script src="src/data/health.js"></script>
+<script src="src/data/crime.js"></script>
+<script src="src/data/combat.js"></script>
+<script src="src/data/prison.js"></script>
+<script src="src/data/pets.js"></script>
+<script src="src/data/social.js"></script>
+<!-- 2. núcleo -->
+<script src="src/core/utils.js"></script>
+<script src="src/core/rng.js"></script>
+<script src="src/core/economy.js"></script>
+<script src="src/core/bus.js"></script>
+<script src="src/core/settings.js"></script>
+<!-- 3. estado -->
+<script src="src/state/state.js"></script>
+<script src="src/state/invariants.js"></script>
+<script src="src/state/persistence.js"></script>
+<!-- 4. geradores -->
+<script src="src/generators/people.js"></script>
+<script src="src/generators/life.js"></script>
+<!-- 5. catálogo de eventos -->
+<script src="src/events/registry.js"></script>
+<script src="src/events/childhood.js"></script>
+<script src="src/events/teen.js"></script>
+<script src="src/events/work.js"></script>
+<script src="src/events/money.js"></script>
+<script src="src/events/danger.js"></script>
+<script src="src/events/relationships.js"></script>
+<script src="src/events/life.js"></script>
+<script src="src/events/prison.js"></script>
+<script src="src/events/health.js"></script>
+<script src="src/events/consequences.js"></script>
+<script src="src/events/approach.js"></script>
+<script src="src/events/underworld.js"></script>
+<script src="src/events/random_ext.js"></script>
+<script src="src/events/combat.js"></script>
+<script src="src/events/class.js"></script>
+<script src="src/events/identity.js"></script>
+<script src="src/events/bonds.js"></script>
+<script src="src/events/cyber.js"></script>
+<script src="src/events/looks.js"></script>
+<!-- 6. sistemas de simulação -->
+<script src="src/systems/modifiers.js"></script>
+<script src="src/systems/consequences.js"></script>
+<script src="src/systems/economy.js"></script>
+<script src="src/systems/speech.js"></script>
+<script src="src/systems/aging.js"></script>
+<script src="src/systems/health.js"></script>
+<script src="src/systems/education.js"></script>
+<script src="src/systems/career.js"></script>
+<script src="src/systems/politics.js"></script>
+<script src="src/systems/business.js"></script>
+<script src="src/systems/finance.js"></script>
+<script src="src/systems/property.js"></script>
+<script src="src/systems/relationships.js"></script>
+<script src="src/systems/bonds.js"></script>
+<script src="src/systems/identity.js"></script>
+<script src="src/systems/justice.js"></script>
+<script src="src/systems/underworld.js"></script>
+<script src="src/systems/martial.js"></script>
+<script src="src/systems/combat.js"></script>
+<script src="src/systems/escape.js"></script>
+<script src="src/systems/prison.js"></script>
+<script src="src/systems/looks.js"></script>
+<script src="src/systems/pets.js"></script>
+<script src="src/systems/activities.js"></script>
+<script src="src/systems/world.js"></script>
+<script src="src/systems/legacy.js"></script>
+<script src="src/systems/events.js"></script>
+<script src="src/systems/sim.js"></script>
+<!-- 7. interface -->
+<script src="src/ui/dom.js"></script>
+<script src="src/ui/sound.js"></script>
+<script src="src/ui/device.js"></script>
+<script src="src/ui/feedback.js"></script>
+<script src="src/ui/render.js"></script>
+<script src="src/ui/views/life.js"></script>
+<script src="src/ui/views/career.js"></script>
+<script src="src/ui/views/assets.js"></script>
+<script src="src/ui/views/rels.js"></script>
+<script src="src/ui/views/health.js"></script>
+<script src="src/ui/views/acts.js"></script>
+<script src="src/ui/views/death.js"></script>
+<script src="src/ui/modals.js"></script>
+<script src="src/ui/controller.js"></script>
+<script src="src/ui/combat.js"></script>
+<script src="src/ui/escape.js"></script>
+<script src="src/ui/hub.js"></script>
+<script src="src/ui/lifestyle.js"></script>
+<!-- 8. ferramentas e boot -->
+<script src="src/dev/selftest.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+"use strict";
+/* events/random_ext.js — eventos internos do trabalho e cotidiano. */
+const hasJob = () => !!S.job && !inPrison() && !career().elected;
+EVENTS.push(
+/* ---------------- Trabalho (disparados por careerYear) ---------------- */
+{ id:"ev_deadline", emoji:"⏰", title:"Prazo impossível", age:[18,75], weight:0, cond:hasJob,
+  speech:()=> say("Preciso disso pronto até sexta. Não me interessa como, porra."),
+  text:()=> "Seu chefe jogou um projeto enorme no seu colo com prazo curtíssimo.",
+  choices:()=>[
+    { label:"🌙 Virar noites e entregar", run:()=>{ S.job.perf = clamp(S.job.perf+12); addStress(12); addRep(3); return "Entreguei. O chefe ficou impressionado." + fx({health:-3}); } },
+    { label:"🗣️ Negociar o prazo", run:()=> chance(0.5 + (hasTrait("charismatic")?0.2:0)) ? (addRep(1), "Conseguimos mais uma semana.") : (S.job.perf = clamp(S.job.perf-6), "\"Prazo é prazo.\" Fiquei mal visto(a).") },
+    { label:"🤷 Fazer o possível e entregar incompleto", run:()=>{ S.job.perf = clamp(S.job.perf-10); return "Entreguei pela metade."; } },
+  ]},
+{ id:"ev_credit_thief", emoji:"🦊", title:"Roubaram seu crédito", age:[18,75], weight:0, cond:hasJob,
+  setup:()=>({ name: genName(country(), chance(0.5)?"M":"F").first }),
+  speech:c=> say(`Pois é, essa ideia foi minha. Trabalhei pra caramba nela.`),
+  text:c=> `${c.name}, seu colega, apresentou SEU trabalho como se fosse dele(a) na reunião.`,
+  choices:c=>[
+    { label:"✋ Desmascarar na hora", run:()=> chance(0.5) ? (addRep(5), S.job.perf = clamp(S.job.perf+5), "Mostrei os arquivos com data. Ficou feio para ele(a).") : (addRep(-3), "Virou bate-boca e os dois saíram mal.") },
+    { label:"📧 Levar ao chefe com provas", run:()=>{ addRep(3); S.job.perf = clamp(S.job.perf+4); return "O chefe entendeu e me deu o mérito em particular."; } },
+    { label:"😶 Engolir", run:()=>{ addStress(7); return "Deixei passar. Mas anotei o nome."; } },
+  ]},
+{ id:"ev_lead_project", emoji:"🚀", title:"Liderar um projeto", age:[20,70], weight:0, cond:()=> hasJob() && S.job.perf > 50,
+  text:()=> "A diretoria quer que você lidere um projeto estratégico.",
+  choices:()=>[
+    { label:"🙋 Aceitar o desafio", run:()=>{ addStress(8); if (chance(0.4 + S.job.perf/200 + P().stats.intelligence/400)){ addRep(10); S.job.perf = clamp(S.job.perf+12); return "O projeto foi um sucesso!"; } addRep(-6); S.job.perf = clamp(S.job.perf-8); return "O projeto fracassou e a culpa caiu em mim."; } },
+    { label:"🙅 Recusar", run:()=>{ addRep(-2); return "Preferi não arriscar."; } },
+  ]},
+{ id:"ev_office_party", emoji:"🥂", title:"Festa da firma", age:[18,75], weight:0, cond:hasJob,
+  text:()=> "Confraternização de fim de ano com open bar.",
+  choices:()=>[
+    { label:"🍻 Aproveitar o open bar", run:()=>{ S.addictions.alcohol = clamp(S.addictions.alcohol+4); if (chance(0.25)){ addRep(-8); return "Bebi demais e falei umas verdades pro chefe. Vergonha."; } addRep(2); return "Me enturmei com a diretoria." + fx({happiness:5}); } },
+    { label:"🥤 Ir, socializar e sair cedo", run:()=>{ addRep(3); return "Networking na medida certa."; } },
+    { label:"🏠 Não ir", run:()=> "Fiquei em casa." },
+  ]},
+{ id:"ev_strike", emoji:"✊", title:"Greve na empresa", age:[18,70], weight:0, cond:()=> hasJob() && ["operacional","técnico","público"].includes(career().tier),
+  speech:()=> say("Ou a gente para tudo, ou eles vão continuar pisando na gente!"),
+  text:()=> "O sindicato convocou greve por reajuste salarial.",
+  choices:()=>[
+    { label:"✊ Aderir à greve", run:()=>{ if (chance(0.55)){ S.job.salary = Math.round(S.job.salary*1.08); return "Greve vitoriosa: 8% de reajuste!"; } S.job.perf = clamp(S.job.perf-8); return "A greve fracassou e a empresa ficou de olho nos grevistas."; } },
+    { label:"🏢 Furar a greve", run:()=>{ S.job.perf = clamp(S.job.perf+6); for (const r of S.rels.filter(r=>r.role==="coworker")) r.rel = clamp(r.rel-15); return "Fui trabalhar. Os colegas me chamaram de pelego."; } },
+  ]},
+/* ---------------- Cotidiano (sorteados) ---------------- */
+{ id:"ev_ticket", emoji:"🚓", title:"Multa de trânsito", age:[18,90], weight:()=> S.vehicles.length ? 1 : 0, cd:3,
+  setup:()=>({ amt: priceOf(rint(80, 600)) }),
+  text:c=> `Você foi multado(a) em ${fmt(c.amt)} por excesso de velocidade.`,
+  choices:c=>[
+    { label:"💳 Pagar", run:()=> "Paguei a multa." + fx({money:-c.amt}) },
+    { label:"📝 Recorrer", run:()=> chance(0.3) ? "Recurso aceito!" : "Recurso negado, e ainda paguei juros." + fx({money:-Math.round(c.amt*1.2)}) },
+    { label:"🤝 Oferecer um \"cafezinho\" ao guarda", hint:"suborno", run:()=> chance(0.5) ? "O guarda aceitou e liberou." + fx({money:-Math.round(c.amt*0.4), karma:-5}) : (addNoto(8), "Era corregedoria. Mais uma ocorrência na ficha." + fx({money:-c.amt*2})) },
+  ]},
+{ id:"ev_phone_broke", emoji:"📱", title:"Celular quebrou", age:[12,90], weight:1, cd:4,
+  setup:()=>({ amt: priceOf(rint(200, 1200)) }),
+  text:c=> `Seu celular caiu e a tela estourou. Um novo custa ${fmt(c.amt)}.`,
+  choices:c=>[
+    { label:"🛒 Comprar um novo", run:()=> "Celular novo na mão." + fx({money:-c.amt, happiness:2}) },
+    { label:"🔧 Trocar só a tela", run:()=> "Ficou quase novo." + fx({money:-Math.round(c.amt*0.3)}) },
+    { label:"🤷 Usar trincado mesmo", run:()=> "Vou cortar o dedo um dia, mas tudo bem." + fx({happiness:-2}) },
+  ]},
+{ id:"ev_identity_theft", emoji:"🕵️", title:"Golpe no seu nome", age:[18,95], weight:()=> 0.7 * country().crime, cd:8,
+  setup:()=>({ amt: priceOf(rint(1500, 9000)) }),
+  text:c=> `Golpistas abriram contas no seu nome e deixaram ${fmt(c.amt)} em dívidas.`,
+  choices:c=>[
+    { label:"⚖️ Processar o banco (demora)", run:()=>{ addStress(8); if (chance(0.7)) return "Depois de meses, o banco limpou meu nome."; addCredit(-40); return "Perdi a causa e o nome ficou sujo." + fx({money:-c.amt}); } },
+    { label:"💳 Pagar para limpar o nome logo", run:()=> "Paguei, mesmo sem dever. Revoltante." + fx({money:-c.amt, happiness:-6}) },
+    { label:"🙈 Ignorar", run:()=>{ addCredit(-70); return "Meu nome foi parar no cadastro de devedores."; } },
+  ]},
+{ id:"ev_flood", emoji:"🌧️", title:"Enchente", age:[18,95], weight:()=> S.properties.some(p=>!isAbroad(p)) ? 0.8 : 0.3, cd:6,
+  setup:()=>{ const p = pick(S.properties.filter(p=>!isAbroad(p)).concat([null])); return { uid:p?.uid }; },
+  text:c=> c.uid ? `Uma enchente atingiu ${byId(DATA.properties, S.properties.find(p=>p.uid===c.uid)?.id || "house")?.name || "sua casa"}.` : "Uma enchente alagou sua rua e estragou móveis.",
+  choices:c=>[
+    { label:"🛠️ Reformar já", run:()=>{ const p = S.properties.find(p=>p.uid===c.uid); if (p){ p.condition = clamp(num(p.condition,100)-25); return renovate(p.uid).msg; } return "Comprei móveis novos." + fx({money:-priceOf(2000)}); } },
+    { label:"⏳ Esperar e ver", run:()=>{ const p = S.properties.find(p=>p.uid===c.uid); if (p){ p.condition = clamp(num(p.condition,100)-35); p.value = Math.round(p.value*0.95); } return "O mofo tomou conta. O imóvel perdeu valor." + fx({happiness:-5}); } },
+  ]},
+{ id:"ev_wedding_invite", emoji:"💒", title:"Convite de casamento", age:[20,80], weight:()=> S.rels.some(r=>r.role==="friend"&&r.alive) ? 0.9 : 0, cd:3,
+  setup:()=>{ const f = pick(S.rels.filter(r=>r.role==="friend"&&r.alive)); return { uid:f.uid, name:f.first, gift: priceOf(rint(100,600)) }; },
+  speech:c=> say(`Você TEM que ir no meu casamento, hein! Se faltar, eu nunca te perdoo.`),
+  text:c=> `${c.name} vai casar e te chamou para ser padrinho/madrinha.`,
+  choices:c=>[
+    { label:"🎁 Ir com um bom presente", run:()=>{ const f = relBy(c.uid); if (f) { f.rel = clamp(f.rel+15); remember_npc(f, "Fui padrinho/madrinha no casamento"); } return "Que festa linda!" + fx({money:-c.gift, happiness:6}); } },
+    { label:"🙏 Ir sem gastar muito", run:()=>{ const f = relBy(c.uid); if (f) f.rel = clamp(f.rel+5); return "Fui, dancei, comi bem." + fx({money:-Math.round(c.gift/4), happiness:4}); } },
+    { label:"🚫 Inventar uma desculpa", run:()=>{ const f = relBy(c.uid); if (f) { f.rel = clamp(f.rel-18); remember_npc(f, "Faltei ao casamento dele(a)"); } return `${c.name} ficou magoado(a).`; } },
+  ]},
+{ id:"ev_tax_refund", emoji:"💸", title:"Restituição do imposto", age:[18,95], weight:()=> S.job ? 0.8 : 0, cd:3,
+  setup:()=>({ amt: Math.round(num(S.yearSummary?.taxes) * rfloat(0.05, 0.2)) }),
+  cond:()=> num(S.yearSummary?.taxes) > 0,
+  text:c=> `A Receita devolveu ${fmt(c.amt)} de imposto pago a mais.`,
+  choices:c=>[
+    { label:"🏦 Guardar", run:()=> "Reserva de emergência agradece." + fx({money:c.amt}) },
+    { label:"🎉 Torrar no fim de semana", run:()=> "Fim de semana de rei." + fx({happiness:6}) },
+  ]},
+{ id:"ev_car_breakdown", emoji:"🛞", title:"Carro quebrou", age:[18,95], weight:()=> S.vehicles.some(v=>!isAbroad(v) && v.age > 4) ? 1.2 : 0, cd:3,
+  setup:()=>{ const v = pick(S.vehicles.filter(v=>!isAbroad(v) && v.age > 4)); return { uid:v.uid, amt: Math.round(fxConv(v.value, v.country)*rfloat(0.08,0.25) + priceOf(300)) }; },
+  text:c=> `O motor do seu ${byId(DATA.vehicles, S.vehicles.find(v=>v.uid===c.uid)?.id || "compact").name} fundiu. Conserto: ${fmt(c.amt)}.`,
+  choices:c=>[
+    { label:"🔧 Consertar", run:()=> "Carro de volta à estrada." + fx({money:-c.amt}) },
+    { label:"🏷️ Vender no estado", run:()=>{ const v = S.vehicles.find(v=>v.uid===c.uid); if (v) v.value = Math.round(v.value*0.5); return sellVehicle(c.uid).msg; } },
+  ]},
+{ id:"ev_food_poison", emoji:"🤢", title:"Intoxicação alimentar", age:[5,95], weight:0.7, cd:5,
+  text:()=> "Aquele pastel de rodoviária cobrou a conta.",
+  choices:()=>[
+    { label:"🏥 Ir ao pronto-socorro", run:()=> "Soro na veia e alta no mesmo dia." + fx({money:-checkupCost(), health:-2}) },
+    { label:"🛌 Aguentar em casa", run:()=> "Dois dias de agonia." + fx({health:-6, happiness:-3}) },
+  ]},
+{ id:"ev_inflation_shock", emoji:"🛒", title:"Tudo mais caro", age:[18,95], weight:()=> S.world.inflation > 0.06 ? 2 : 0, cd:3,
+  text:()=> `A inflação está em ${(S.world.inflation*100).toFixed(1)}% ao ano. O mercado do mês pesou.`,
+  choices:()=>[
+    { label:"🥫 Cortar gastos (estilo econômico)", run:()=>{ P().lifestyle = 0; return "Troquei marcas, cortei saídas." + fx({happiness:-4}); } },
+    { label:"💳 Manter o padrão no cartão", run:()=>{ addStress(5); return "Mantive o padrão… e a fatura veio salgada." + fx({money:-priceOf(1200)}); } },
+  ]},
+{ id:"ev_viral", emoji:"📸", title:"Viralizou sem querer", age:[13,80], weight:0.4, cd:10,
+  text:()=> "Alguém filmou você numa situação engraçada e o vídeo explodiu.",
+  choices:()=>[
+    { label:"😎 Abraçar a fama e monetizar", run:()=> "Virei meme e fechei uns publis." + fx({fame:12, money:priceOf(rint(500,3000))}) },
+    { label:"😳 Pedir para tirarem do ar", run:()=> "Consegui, mas o print é eterno." + fx({fame:3, happiness:-4}) },
+  ]},
+);

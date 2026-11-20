@@ -1,0 +1,227 @@
+/* =====================================================================
+   mobile.css — compatibilidade multi-dispositivo (carregado por último).
+   1. Áreas seguras (notch, Dynamic Island, barra de gestos) e alturas
+      dinâmicas (100dvh com fallback 100vh e --app-h via JS).
+   2. Toque: alvos ≥ 44px, sem atraso de duplo toque, sem seleção ou
+      menu de contexto acidental em controles, feedback em :active.
+   3. Modais e minigames: cabem na tela, rolam por dentro sem arrastar a
+      página, ações sempre alcançáveis; fuga jogável só com o polegar.
+   4. Breakpoints: celular (≤480), tablet (481–979 retrato/paisagem),
+      paisagem baixa de celular, desktop (≥980) e telas muito largas.
+   Os efeitos de :hover dos outros arquivos ficam em @media (hover:hover):
+   em telas de toque eles não existem nem ficam "presos".
+   ===================================================================== */
+:root{
+  --sat:env(safe-area-inset-top, 0px); --sab:env(safe-area-inset-bottom, 0px);
+  --sal:env(safe-area-inset-left, 0px); --sar:env(safe-area-inset-right, 0px);
+  --app-h:100vh;            /* atualizado por JS (fallback de dvh) */
+  --nav-h:62px;             /* altura da navegação inferior */
+  --tap:44px;               /* alvo mínimo de toque (Apple HIG / Material) */
+}
+@supports (height:100dvh){ :root{ --app-h:100dvh; } }
+
+/* ---------- 1. Raiz: sem rolagem horizontal, sem inflar fonte, sem zoom por duplo toque ---------- */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:manipulation;overflow-x:hidden}
+@supports (overflow:clip){ html{overflow-x:clip} }
+body{min-height:100vh;min-height:var(--app-h);overflow-x:hidden;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+@supports (overflow:clip){ body{overflow-x:clip} }
+#app{min-height:100vh;min-height:var(--app-h);padding-left:max(var(--gutter), var(--sal));padding-right:max(var(--gutter), var(--sar))}
+img,svg,video,canvas{max-width:100%}
+html.lock,html.lock body{overflow:hidden}            /* modal aberto: a página de trás não rola */
+
+/* ---------- 2. Toque ---------- */
+button,select,input,[role="button"],.row.click,.action,.hub-tile{touch-action:manipulation}
+button,.row.click,.action,.mv,.hub-tile,.hub-continue,nav.tabs,.dpad,.escgrid,.arena,.seg,.tones,.traitpick,#loading,.chip,.big{
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.log,.result,.modal p,.kv dd{-webkit-user-select:text;user-select:text}
+/* feedback de toque (o hover não existe em touch) */
+.row.click:active{background:var(--surface2)}
+.choices button:active{background:var(--surface);border-color:var(--accent)}
+.action:active,.mv:active:not(:disabled),.hub-tile:active{border-color:var(--accent)}
+.btn:active{background:var(--surface3)}
+.filters button:active,.seg button:active,.tones button:active,.traitpick button:active{transform:scale(.96)}
+@media (pointer:coarse){
+  .btn{min-height:var(--tap);padding:10px 14px}
+  .btn.sm{min-height:40px;padding:8px 12px;font-size:13px}
+  .iconbtn{width:var(--tap);height:var(--tap)}
+  .choices button{min-height:52px;padding:13px 15px}
+  .action{min-height:58px}
+  .filters button{min-height:40px;padding:8px 14px}
+  .seg button{min-height:var(--tap)}
+  .tones button,.traitpick button{min-height:var(--tap);min-width:var(--tap)}
+  .hub-back{width:var(--tap);height:var(--tap)}
+  .row.click{min-height:var(--tap)}
+  .art-btns{gap:6px}
+  .mv{min-height:60px}
+  nav.tabs button{min-height:50px}
+}
+/* campos ≥ 16px: o iOS não dá zoom automático ao focar */
+input,select,textarea,.form input,.form select,.logtools input{font-size:16px}
+input[type="range"]{min-height:var(--tap);touch-action:pan-x}
+/* textos e chips longos nunca estouram a largura */
+.chip{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.btn{max-width:100%}
+.row .t,.row .s,.result,.modal p,.oddsline{overflow-wrap:anywhere}
+
+/* ---------- 3. Áreas seguras nos elementos fixos ---------- */
+header.top{padding-top:calc(12px + var(--sat))}
+.toast{top:calc(14px + var(--sat))}
+#floaters{top:calc(110px + var(--sat))}
+#loading{padding:var(--sat) var(--sar) var(--sab) var(--sal)}
+#hub{padding-top:calc(18px + var(--sat));padding-bottom:calc(40px + var(--sab));padding-left:max(var(--gutter,16px), var(--sal));padding-right:max(var(--gutter,16px), var(--sar));
+  height:100vh;height:var(--app-h);overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+footer.age{padding-left:max(var(--gutter), var(--sal));padding-right:max(var(--gutter), var(--sar))}
+@media (max-width:979px){
+  nav.tabs{padding-left:max(8px, var(--sal));padding-right:max(8px, var(--sar));padding-bottom:calc(6px + var(--sab))}
+  footer.age{bottom:calc(var(--nav-h) + var(--sab))}
+  main{padding-bottom:calc(190px + var(--sab))}
+}
+@media (min-width:980px){
+  header.top{height:100vh;height:var(--app-h)}
+  footer.age{padding-bottom:calc(22px + var(--sab))}
+}
+
+/* ---------- 4. Modais: cabem em qualquer tela, rolam por dentro ---------- */
+.overlay{padding:calc(12px + var(--sat)) max(12px, var(--sar)) calc(12px + var(--sab)) max(12px, var(--sal));overscroll-behavior:contain}
+.modal{max-height:calc(100vh - 24px - var(--sat) - var(--sab));max-height:calc(var(--app-h) - 24px - var(--sat) - var(--sab));
+  overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+@media (max-width:639px){
+  /* celular: modal vira "folha" ancorada embaixo, perto do polegar */
+  .overlay{padding:calc(8px + var(--sat)) 0 0}
+  .modal{max-width:none;border-radius:22px 22px 0 0;padding:18px max(16px, var(--sar)) calc(18px + var(--sab)) max(16px, var(--sal));
+    max-height:calc(100vh - 8px - var(--sat));max-height:calc(var(--app-h) - 8px - var(--sat))}
+  .modal::before{content:"";display:block;width:40px;height:5px;border-radius:5px;background:var(--border-strong);margin:-6px auto 12px}
+}
+/* botão principal de resultado/continuação acompanha a rolagem do modal */
+.modal .choices > button.primary:only-child,.modal .fight-end .choices{position:sticky;bottom:0}
+.modal .fight-end .choices{background:var(--surface);padding-top:8px;margin-bottom:-4px}
+
+/* ---------- Celular pequeno (≤ 480px) ---------- */
+@media (max-width:480px){
+  :root{--fs:15px}
+  .card{padding:14px;border-radius:14px}
+  .card h2{font-size:14.5px;flex-wrap:wrap}
+  .bars{gap:6px 12px}
+  .modal h3{font-size:18px}
+  .grid2{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+  .kv{grid-template-columns:1fr;gap:0 0}.kv dt{margin-top:6px}
+  .statgrid,.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pet-row{flex-wrap:wrap}.pet-row > .grow{flex:1 1 100%}
+}
+@media (max-width:360px){
+  :root{--gutter:12px;--fs:14.5px}
+  .grid2,.moves,.moves.util{grid-template-columns:1fr}
+  .hub-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .hub-tile{padding:12px}.hub-tile span{font-size:22px}
+  nav.tabs button{font-size:10.5px;padding:6px 2px}
+  .idtext h1{font-size:15.5px}.money{font-size:14.5px}
+  .avatar{width:44px;height:44px;font-size:24px}
+  .ld-logo,.hub-logo{font-size:32px}
+}
+
+/* ---------- Tablets (481–979): mais colunas, linhas de leitura confortáveis ---------- */
+@media (min-width:481px) and (max-width:979px){
+  #app{max-width:860px}
+  .grid2{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+  .hub-inner{max-width:680px}
+  .hub-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .modal{max-width:600px}
+  .card p,.result{max-width:70ch}
+}
+@media (min-width:700px) and (max-width:979px){
+  nav.tabs{left:50%;right:auto;transform:translateX(-50%);width:min(720px, 100% - 24px);bottom:calc(10px + var(--sab));border-radius:20px;border:1px solid var(--border);padding-bottom:6px}
+  footer.age{bottom:calc(var(--nav-h) + 18px + var(--sab))}
+  main{padding-bottom:calc(200px + var(--sab))}
+}
+
+/* ---------- Celular deitado (paisagem baixa) ---------- */
+@media (orientation:landscape) and (max-height:500px) and (max-width:979px){
+  :root{--nav-h:48px}
+  header.top{position:relative;padding-top:calc(8px + var(--sat))}
+  .bars{grid-template-columns:repeat(4,1fr)}
+  nav.tabs button{flex-direction:row;gap:6px;min-height:40px;padding:4px 6px}
+  nav.tabs button .ic{font-size:15px}
+  footer.age{padding-top:10px;padding-bottom:6px}
+  .big{padding:9px;font-size:15px}.big small{display:none}
+  main{padding-bottom:calc(140px + var(--sab))}
+  .overlay{align-items:center;padding:calc(6px + var(--sat)) max(12px, var(--sar)) calc(6px + var(--sab)) max(12px, var(--sal))}
+  .modal{border-radius:18px;max-width:min(92vw, 760px);max-height:calc(100vh - 12px);max-height:calc(var(--app-h) - 12px - var(--sat) - var(--sab))}
+  .modal::before{display:none}
+  .ld-list{display:none}.ld-sub{margin-bottom:12px}.ld-tip{margin-top:12px}
+  .hub-logo{margin-top:4px;font-size:30px}
+  .hub-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
+/* ---------- Desktop e telas muito largas ---------- */
+@media (min-width:1440px){
+  #app{max-width:1280px;grid-template-columns:360px minmax(0,1fr)}
+  footer.age{left:max(var(--gutter), calc(50vw - 640px + var(--gutter)));width:360px}
+}
+
+/* ---------- Combate em telas pequenas ---------- */
+@media (max-width:520px){
+  .fight-head h3{font-size:16px;flex:1 1 100%}
+  .fighter{padding:8px}.f-av{font-size:26px}.f-name{font-size:13px}
+  .flog{font-size:12.5px;min-height:54px}
+  .seg button{font-size:12px;padding:8px 2px}
+}
+
+/* ---------- Fuga: grade tocável + direcional no polegar ---------- */
+.escape .esc-board{display:block}
+.escgrid{touch-action:none;width:min(100%, 430px, calc(var(--app-h) - 360px));min-width:min(100%, 260px);cursor:pointer}
+.ec.reach{box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--accent) 55%,transparent)}
+.ec.reach:active{background:color-mix(in srgb,var(--accent) 25%,var(--surface))}
+@media (pointer:coarse){
+  .dpad{grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,56px);gap:8px}
+  .dpad button{font-size:22px;border-radius:16px}
+}
+@media (orientation:landscape) and (max-height:500px){
+  /* deitado: grade à esquerda, legenda e direcional à direita */
+  .escape .esc-board{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center}
+  .escgrid{width:min(calc(var(--app-h) - 120px), 360px);margin:0}
+  .dpad{grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,46px);margin:6px auto}
+}
+
+/* ---------- Hub e loading ---------- */
+.hub-continue,.hub-tile{min-height:var(--tap)}
+@media (min-width:980px){ .hub-inner{max-width:720px}.hub-grid{grid-template-columns:repeat(3,minmax(0,1fr))} }
+
+/* ---------- Cabeçalho em celulares estreitos: dinheiro desce para uma linha própria ---------- */
+@media (max-width:420px){
+  header.top .idrow{flex-wrap:wrap;row-gap:6px}
+  header.top .idtext{flex:1 1 0}
+  header.top .idtext h1{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.2}
+  header.top .idtext .sub{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  header.top .money{order:3;flex:1 1 100%;display:flex;justify-content:space-between;align-items:baseline;text-align:left;
+    background:var(--surface2);border-radius:12px;padding:6px 12px}
+  header.top .money small{display:inline}
+}
+
+/* ---------- Barras de atributo: colunas que encolhem de verdade (1fr não desce abaixo do conteúdo) ---------- */
+.bars{grid-template-columns:repeat(2,minmax(0,1fr))}
+.bar{min-width:0}
+.bar .lbl{gap:6px}
+.bar .lbl span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (orientation:landscape) and (max-height:500px) and (max-width:979px){ .bars{grid-template-columns:repeat(4,minmax(0,1fr))} }
+.pet-bars{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:520px){ .pet-bars{grid-template-columns:minmax(0,1fr)} }
+
+/* ---------- Navegação inferior estreita: 6 abas sem vazar da tela ---------- */
+@media (max-width:420px){
+  nav.tabs{gap:2px}
+  nav.tabs button{padding:6px 1px;font-size:11px;letter-spacing:0}
+  nav.tabs button > span:not(.ic){max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
+.hub-tile{min-width:0}.hub-tile b,.hub-tile small{max-width:100%;overflow-wrap:anywhere}
+
+/* ---------- Seletor próprio (substitui <select> nativo) ---------- */
+.picker{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:var(--tap);padding:10px 12px;border-radius:11px;
+  border:1px solid var(--border);background:var(--surface2);color:var(--text);font:inherit;font-size:16px;text-align:left;cursor:pointer}
+.picker span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.picker i{font-style:normal;color:var(--muted);flex:none}
+.picker:active{border-color:var(--accent)}
+@media (hover:hover){ .picker:hover{border-color:var(--accent)} }
+.picklist button{display:flex;justify-content:space-between;align-items:center}
+.picklist button.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--surface2))}
+.picklist button b{color:var(--accent)}
+.hub-inner.still{animation:none}

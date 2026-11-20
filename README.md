@@ -1,0 +1,131 @@
+# ClaudiLife — Simulador de Vida (v7)
+
+- **Jogar / desenvolver:** abra `index.html`. O jogo abre no **hub** (menu principal): continuar, vidas salvas (até 6 slots), Hall dos Legados, ajustes e criador de personagem. Ele carrega os módulos de `src/` direto do disco, sem servidor e sem build.
+- **Arquivo único para distribuir:** rode `python3 tools/build.py`. O resultado é `dist/claudilife.html`, com todos os módulos embutidos.
+- **Teste de estresse:** abra `index.html?selftest`. São 60 vidas completas, verificando `NaN`, valores negativos, invariantes e exceções. O título da aba deve mostrar `SELFTEST OK`.
+- **Regressões automáticas no selftest:** `emigrationTest()` (imóvel no Brasil sobrevive à emigração, continua rendendo e pode ser vendido de longe) e `heirTest()` (continuação como herdeiro).
+- **Testes v7:** `?unit=identityTest`, `?unit=prisonTest`, `?unit=petTest`, `?unit=classTest` e `?unit=bondsTest`. O `?selftest` roda todos e mostra o veredito no topo da página.
+- **Demo de telas:** `?demo=18&ui=hub|create|pets|prison|spouse|beauty`.
+- **Testes unitários:** `index.html?unit=combatTest` mostra a tabela de letalidade e 150 lutas por contexto. `?unit=escapeTest` gera puzzles de fuga nas dificuldades 0–8 e os joga com a solução da busca em largura (BFS).
+- **Demo de minigames:** `?demo=25&fight=street&art=muaythai:85` abre uma briga. `?demo=25&escape=4` abre uma fuga de segurança máxima.
+- **Debug do log:** `index.html?demo=40&dump=cheque|leil` lista as entradas do log que casam com a regex.
+- **Sonda de balanceamento:** abra `index.html?balance`. Compara os estilos de vida cuidadoso, negligente e imprudente e testa o antigo exploit de "spam de saúde".
+- **Demo:** `index.html?demo=40&tab=health&ev=ev_mentor` pula 40 anos, abre uma aba e mostra um evento.
+
+## Estrutura
+
+```
+index.html            entrada de dev; a ORDEM das <script> define o bundle
+tools/build.py        empacota tudo em dist/claudilife.html
+src/
+  styles/             tokens.css (tema/movimento) · layout.css · components.css · animations.css
+  data/               catálogos puros: prison (cursos e remição por tipo de crime), pets (19 espécies), classes em 9 níveis (world); world, education, careers, careers_ext (27 profissões novas), combat (artes marciais, golpes, torneios, penas),
+                      assets (21 imóveis, 8 aluguéis, 19 veículos), health, crime (12 crimes + organizações),
+                      social (personalidades, falas, entrevistas, dicas do loading)
+  core/               utils, rng (semente no save), economy (moeda, fxConv multi-país, impostos),
+                      bus (on/emit: simulação → som/UI), settings (som, volume, linguagem)
+  state/              state.js (S + helpers + sanitize) · invariants.js · persistence.js (slots, Hall dos Legados, migração v3→v7)
+  generators/         people.js (NPCs, parceiros) · life.js (nova vida, genética)
+  events/             registry.js + catálogos por tema (EVENTS.push): childhood, teen, work,
+                      money, danger, relationships, life, prison, health, consequences
+  systems/            regras de simulação, uma responsabilidade por arquivo:
+    economy.js        ciclo econômico global (expansão/estável/recessão/crise), inflação, índice salarial
+    underworld.js     dinheiro sujo, lavagem, organização criminosa (capangas, operações, calor, rivais)
+    speech.js         pensamentos e falas contextuais + filtro de linguagem leve
+    martial.js        artes marciais: matrícula, treino, maestria/faixas, golpes desbloqueados, torneios
+    combat.js         motor de briga por turnos, letalidade, homicídio (polícia, testemunhas, pena, vingança)
+    identity.js       descoberta gradual da orientação (inclinações → rótulo escolhido pelo jogador)
+    prison.js         pátio, trabalho, cursos, recurso e remição contextual
+    bonds.js          amigos úteis, regime de bens, golpes conjugais, partilha no divórcio
+    looks.js          estilo, guarda-roupa, skincare, procedimentos, teste de visão, óculos e laser
+    pets.js           abrigo, pet shop, mercado exótico, cuidados, risco de ataque
+    escape.js         fuga da prisão: gerador de puzzle verificado por BFS, foragido(a), identidade falsa
+    modifiers.js      chances contextuais COM explicação (contratação, promoção, crime, cura, eleição, crédito)
+    consequences.js   efeitos agendados de escolhas passadas (schedule → CONSEQ[kind])
+    aging.js          envelhecimento, vitalidade, estresse (com causas), felicidade de base
+    health.js         doenças por estágio, check-up, tratamento, planos, vícios, sequelas, morte
+    education · career · politics · business · finance (crédito) · property · relationships
+    justice · activities (retornos decrescentes) · world · legacy · events (fila) · sim (tick anual)
+  ui/                 hub.js (menu principal e criador) · lifestyle.js (aparência, pets, prisão, casamento) · dom.js (componentes + animações) · sound.js (SoundManager Web Audio) ·
+                      feedback.js (loading, +R$ flutuante, balões, ficha de NPC) · render.js · modals.js
+                      views/{life,career,assets,rels,health,acts,death}.js · controller.js (objeto UI) ·
+                      combat.js (modal de briga, painel de lutas) · escape.js (minigame de fuga)
+  dev/selftest.js     selfTest() e balanceReport()
+  main.js             boot
+```
+
+Os módulos são scripts clássicos que compartilham o escopo global. Por isso funcionam via `file://` e a ordem de carregamento importa: `data → core → state → generators → events → systems → ui → main`.
+
+## Modelo multi-país (v5)
+Todo imóvel, veículo, negócio e dívida guarda `country` e o valor na moeda daquele país. O caixa e os investimentos ficam na moeda do país onde você mora. Patrimônio e fluxo de caixa convertem tudo com `fxConv(valor, de, para)`. Ao emigrar, nada é vendido: só o caixa e os investimentos trocam de moeda, e os aluguéis do exterior entram convertidos, com 10% de taxa de administração remota.
+
+## Vida, prisão e relações (v7)
+- **Classe social:** é sempre sorteada pelos pesos de `DATA.classes` (9 níveis). As fórmulas antigas usam `clsBand()` (0–4).
+- **Orientação:** começa em `"descobrindo"`. Cada evento chama `leanIdentity()`. Depois de 3 vivências, o jogador escolhe o rótulo. Aos 23 anos, o padrão das escolhas define.
+- **Remição na prisão:** é `base × DATA.prisonCourses[i].mult[categoria do crime]`. A categoria vem de `crimeCategory()`.
+- **Saves:** `saveGame()` grava no slot atual. `recordHall()` roda em `die()`. `NO_PERSIST` bloqueia a escrita em testes e demos.
+
+## Combate e fuga (v6)
+- **Toda briga** (rua, assalto, prisão, facção, contrato, vingança, torneio) chama `startFight(kind, ctx)`. A UI abre o modal, e `endFight` aplica as consequências. A letalidade está documentada no topo de `systems/combat.js`.
+- **Toda fuga** chama `startEscape()`. Cada etapa só é aceita se `solveStage()` (BFS em posição × tempo × chave) encontrar solução dentro do limite de turnos.
+- **Save pela metade:** `S.fight` e `S.escape` ficam no save. Ao recarregar, o modal reabre. Se o jogador avançar o ano, `autoFight` e `autoEscape` resolvem a pendência.
+
+## Como estender
+
+**Novo evento.** Crie ou edite um arquivo em `src/events/`:
+```js
+EVENTS.push({ id:"ev_meu", emoji:"🎲", title:"Título", age:[18,60],
+  weight: () => S.job ? 1.5 : 0,      // 0 = nunca sorteado (só via enqueue)
+  cond:   () => !!S.job,              // revalidado antes de exibir (evita contradições)
+  cd: 4,                              // cooldown em anos (ou once:true)
+  setup: () => ({ valor: priceOf(500) }),
+  text: c => `Texto com ${fmt(c.valor)}`,
+  choices: c => [
+    { label:"Opção A", hint:"dica", run: () => { schedule("meuEfeito", 3, {}, "Isso vai voltar…"); return "Resultado." + fx({ happiness:5, money:-c.valor }); } },
+  ]});
+```
+
+**Nova consequência futura.** Adicione `CONSEQ.meuEfeito = ctx => { …; return out("texto", "good") }` em `systems/consequences.js`. Revalide o estado dentro do handler.
+
+**Nova chance explicada.** Use `mkOdds(base).add("Fator", delta)…done()` em `systems/modifiers.js` e mostre com `explainOdds(o)`.
+
+**Nova carreira.** Faça `DATA.careers.push({...})`. Os campos opcionais são `minHealth`, `minLooks`, `minAge`, `cleanRecord`, `exam`, `fame`, `talent` e `elected`.
+
+**Nova doença.** Entra em `DATA.illnesses`, com `sev`, `cure`, `cost`, `chronic`, `detect`, `symptoms`, `progress` e `risk:{smoke,alcohol,stress,sedentary,age,lux}`.
+
+**Imóveis, veículos, investimentos, negócios, planos de saúde e vícios** ficam nas listas de `src/data/`.
+
+**Novo golpe.** Adicione em `DATA.moves` com `art`, `req`, `dmg`, `acc`, `ko`, `lethal`, `cost` e `type`. Ele aparece sozinho na briga quando a maestria chegar lá.
+
+**Novo contexto de briga.** Crie um perfil em `DATA.fightProfiles` e um handler em `FIGHT_AFTER` (`systems/combat.js`).
+
+**Nova atividade.** Adicione em `ACTIVITIES` (`systems/activities.js`). Use `sc(valor, id)` para respeitar os retornos decrescentes.
+
+**Nova abordagem (alguém vem até você).** Coloque `ctx.npc` (use `approachNPC()`) e `speech: c => texto` no evento. O modal mostra a ficha e o balão automaticamente. Inclua `investigateChoice(id)` para o jogador poder investigar antes de decidir.
+
+**Novo som.** Adicione uma função em `SFX` (`ui/sound.js`) e chame `Sound.play("nome")`, ou `emit("evento")` a partir da simulação.
+
+**Mudar o formato do save.** Aumente `SAVE_VERSION` e preencha os novos campos em `ensureState()`. A migração roda automaticamente.
+
+**Depois de qualquer mudança:** abra `?selftest` e `?balance`, e então rode `python3 tools/build.py`.
+
+## Celular, tablet e desktop
+- **`src/styles/mobile.css`** (carregado por último):
+  - áreas seguras (`env(safe-area-inset-*)`) e altura `100dvh` com fallback;
+  - alvos de toque ≥ 44px em `(pointer:coarse)`;
+  - modais em folha inferior no celular, com rolagem interna;
+  - breakpoints de celular, tablet, paisagem baixa e desktop.
+- **`:hover`:** fica todo em `@media (hover:hover)`.
+- **`src/ui/device.js`:**
+  - `--app-h` para navegadores sem `dvh`;
+  - áudio liberado no primeiro toque;
+  - save ao ir para o segundo plano;
+  - proteção contra toque duplo (`Device.guard`).
+- **Fuga:** tocar numa casa vizinha, deslizar o dedo na grade ou usar o direcional.
+- **Auditoria:** `?audit` lista estouros de largura, alvos pequenos e campos que causariam zoom no iOS. Rode em várias larguras.
+- **App instalável:** `manifest.webmanifest` e `icons/` (ícones gerados em PNG).
+
+## Deploy na Vercel
+- **Site estático, sem build:** a Vercel serve `index.html` e `src/` direto. O `vercel.json` só define cabeçalhos de segurança e `cleanUrls`.
+- **Ignorados no deploy:** `tools/` e o README (via `.vercelignore`). O arquivo único fica disponível em `/dist/claudilife`.
+- **Saves:** ficam no `localStorage` do navegador de cada jogador, por domínio. Mudar de domínio significa começar do zero, a menos que o jogador exporte e importe o save.

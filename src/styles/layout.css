@@ -1,0 +1,58 @@
+/* =====================================================================
+   layout.css — casca do app
+   Mobile: cabeçalho fixo + abas + botão de idade flutuante.
+   Desktop (≥980px): coluna lateral fixa (identidade, atributos, abas,
+   botão de idade) + conteúdo principal em coluna larga.
+   ===================================================================== */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg-grad),var(--bg);background-attachment:fixed;color:var(--text);font:var(--fs)/1.5 var(--font);
+  -webkit-font-smoothing:antialiased;font-feature-settings:"cv11","ss01";min-height:100vh}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:none;box-shadow:var(--ring);border-radius:var(--radius-sm)}
+
+#app{max-width:780px;margin:0 auto;padding:0 var(--gutter);min-height:100vh;display:flex;flex-direction:column}
+header.top{position:sticky;top:0;z-index:20;padding:12px 0 6px;
+  background:linear-gradient(var(--bg) 82%, transparent)}
+main{flex:1;padding:8px 0 120px;min-width:0}
+
+/* abas: ícone + rótulo; rolagem horizontal só em telas muito estreitas */
+nav.tabs{display:flex;gap:4px;margin-top:10px;padding:4px;background:var(--surface3);border-radius:14px;overflow-x:auto;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs button{flex:1 0 auto;display:flex;flex-direction:column;align-items:center;gap:1px;background:transparent;border:none;
+  padding:6px 8px;border-radius:11px;color:var(--muted);font-weight:650;font-size:12px;letter-spacing:.01em;
+  transition:background var(--t) var(--ease),color var(--t) var(--ease),transform var(--t-fast) var(--ease)}
+nav.tabs button .ic{font-size:17px;line-height:1.1;filter:grayscale(.6);transition:filter var(--t)}
+@media (hover:hover){nav.tabs button:hover{color:var(--text2)}}
+nav.tabs button:active{transform:scale(.96)}
+nav.tabs button.on{background:var(--surface);color:var(--accent);box-shadow:var(--shadow-sm)}
+nav.tabs button.on .ic{filter:none}
+
+footer.age{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:26px var(--gutter) calc(14px + env(safe-area-inset-bottom));
+  background:linear-gradient(transparent,var(--bg) 40%);pointer-events:none}
+footer.age .inner{max-width:748px;margin:0 auto;display:flex;gap:8px;pointer-events:auto}
+
+@media (min-width:980px){
+  #app{max-width:1180px;display:grid;grid-template-columns:340px minmax(0,1fr);gap:28px;align-items:start}
+  header.top{position:sticky;top:0;height:100vh;padding:22px 0 110px;background:none;display:flex;flex-direction:column;overflow-y:auto;scrollbar-width:thin}
+  header.top .hudcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow)}
+  nav.tabs{flex-direction:column;background:transparent;padding:0;margin-top:14px;gap:2px;overflow:visible}
+  nav.tabs button{flex-direction:row;justify-content:flex-start;gap:10px;font-size:14.5px;padding:10px 14px}
+  nav.tabs button .ic{font-size:18px}
+  main{padding:22px 0 60px}
+  footer.age{left:max(var(--gutter), calc(50vw - 590px + var(--gutter)));right:auto;width:340px;background:none;padding:0 0 22px}
+  footer.age .inner{max-width:none}
+}
+@media (max-width:400px){
+  :root{--gutter:12px}
+  nav.tabs button{padding:6px 5px;font-size:11px}
+}
+/* sidebar estreita: dinheiro vai para baixo do nome para não truncar */
+@media (min-width:980px){
+  header.top .idrow{flex-wrap:wrap}
+  header.top .idtext{flex:1 1 150px}
+  header.top .money{order:3;flex:1 1 100%;display:flex;justify-content:space-between;align-items:baseline;text-align:left;
+    background:var(--surface2);border-radius:12px;padding:8px 12px;font-size:18px}
+  header.top .money small{display:inline}
+}

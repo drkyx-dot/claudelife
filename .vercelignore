@@ -1,0 +1,5 @@
+# não publicar ferramentas de build nem arquivos locais
+tools/
+README.md
+*.log
+.DS_Store
