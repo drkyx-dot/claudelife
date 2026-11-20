@@ -26,7 +26,7 @@ const hubBack = () => `<button class="hub-back" onclick="showHub('home')" aria-l
 const HUB_VIEWS = {
   home(){
     const slots = listSlots(), cur = slots.find(s => s.id === (CUR_SLOT || lsGet(CUR_SLOT_KEY))) || slots[0], hall = readHall();
-    return `<div class="hub-logo"><span class="ld-mark">🧬</span><b>Claudi<span>Life</span></b></div><div class="ld-sub">Simulador de vida</div>
+    return `<div class="hub-top">${fsButton("hub-back")}</div><div class="hub-logo"><span class="ld-mark">🧬</span><b>Claudi<span>Life</span></b></div><div class="ld-sub">Simulador de vida</div>
       ${cur ? `<button class="hub-continue" onclick="hubPlay('${cur.id}')"><span class="hc-av">${cur.alive ? avatarFor(cur.age, cur.gender, cur.tone) : "🪦"}</span>
         <span class="hc-txt"><b>${cur.alive ? "▶ Continuar" : "📜 Ver legado"}</b><small>${esc(cur.name)} · ${cur.age} anos · ${flagOf(cur.country)} ${cur.gen > 1 ? `· ${cur.gen}ª geração` : ""}</small></span></button>` : ""}
       <div class="hub-grid">
@@ -36,6 +36,7 @@ const HUB_VIEWS = {
         <button class="hub-tile" onclick="showHub('hall')"><span>🏛️</span><b>Hall dos legados</b><small>${hall.lives.length} vida(s) · ${Object.keys(hall.ach).length} conquista(s)</small></button>
         <button class="hub-tile" onclick="showHub('settings')"><span>⚙️</span><b>Ajustes</b><small>som, tema, linguagem</small></button>
         <button class="hub-tile" onclick="document.getElementById('hubimp').click()"><span>⬆️</span><b>Importar</b><small>arquivo .json</small></button>
+        <button class="hub-tile" onclick="UI.guide()"><span>📖</span><b>Guia rápido</b><small>como jogar em 5 passos</small></button>
       </div>
       <input type="file" id="hubimp" accept="application/json,.json" hidden onchange="importSave(this.files[0], ok=>{ toast(ok?'Save importado em um slot novo!':'Arquivo inválido.'); if (ok){ hideHub(); render(); } })">
       <div class="hub-foot">💡 ${esc(pick(DATA.tips))}</div>`;
@@ -110,7 +111,7 @@ function hubRandom(){
 }
 function hubPlay(id){
   if (!loadGame(id)){ toast("Não foi possível abrir esse save."); return; }
-  hideHub(); HUD_PREV = null; TAB = "life"; render(); window.scrollTo(0,0);
+  hideHub(); HUD_PREV = null; TAB = "life"; render(); pageTop();
   if (!P().alive) return;
   if (S.fight) UI.fightOpen(); else if (S.escape) UI.escapeOpen(); else if (S.queue.length) showEvent();
 }

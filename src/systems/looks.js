@@ -77,7 +77,7 @@ function doProcedure(id){
   if (P().age < d.minAge) return R(false, `Idade mínima: ${d.minAge}.`);
   if (inPrison()) return R(false, "Você está preso(a).");
   const price = priceOf(d.price); if (!canAfford(price)) return R(false, `Custa ${fmt(price)}.`);
-  addMoney(-price); look().procedures++;
+  addMoney(-price); look().procedures++; emit("hospital");
   const risk = d.risk * (P().age > 60 ? 2 : 1) * (P().stats.health < 40 ? 1.5 : 1);
   if (chance(risk)){
     const h = rint(...d.harm);

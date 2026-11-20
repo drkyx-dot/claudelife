@@ -5,7 +5,7 @@
    ===================================================================== */
 const SAVE_KEY = "claudilife.save.v6"; // legado: v7 usa slots (state/persistence.js)
 const LEGACY_SAVE_KEYS = ["claudilife.save.v6","claudilife.save.v5","claudilife.save.v4","claudilife.save.v3"];
-const SAVE_VERSION = 7;
+const SAVE_VERSION = 8;
 const PROPERTY_ID_MIGRATION = { townhouse:"sobrado" }; // ids removidos em versões antigas
 
 let S = null; // estado global da vida atual
@@ -47,6 +47,12 @@ function ensureState(st = S){
   st.pets = st.pets || [];
   if (st.flags.pet){ st.pets.push({ uid:uid(), sp:"dog_srd", name:st.flags.pet.name, age:Math.max(1, p.age - num(st.flags.pet.since, p.age)), bond:70, hunger:0, stress:10, neglect:0, health:90, trained:0, played:false }); delete st.flags.pet; }
   st.cyberSkill = clamp(num(st.cyberSkill)); st.prisonSkills = st.prisonSkills || [];
+  // v8: trabalho autônomo, coleção, arsenal, lado sombrio
+  st.gig = st.gig && byId(DATA.gigs, st.gig.id) ? st.gig : null;
+  st.collection = (st.collection || []).filter(c => byId(DATA.collectibles, c.id)).map(c => ({ country:home, ...c }));
+  st.arsenal = (st.arsenal || []).filter(w => byId(DATA.armory, w.id));
+  st.dark = Object.assign({ active:false, code:"code", urge:0, heat:0, clues:0, stealth:10, kills:0, victims:[], hunts:0 }, st.dark || {});
+  st.hunt = null;
   st.stats = Object.assign({ cyberOk:0, petsOwned:0, remitted:0, spouseScams:0 }, st.stats);
   if (st.prison){ st.prison.remit = num(st.prison.remit); st.prison.intim = num(st.prison.intim); st.prison.courses = st.prison.courses || {}; st.prison.cat = st.prison.cat || crimeCategory(st.prison.crime); }
   if (st.prison){ st.prison.security = st.prison.security || (st.prison.years >= 12 ? "máxima" : st.prison.years >= 5 ? "média" : "mínima"); st.prison.escAttempts = num(st.prison.escAttempts); st.prison.escBlock = num(st.prison.escBlock); }
@@ -129,7 +135,7 @@ function propertiesTotal(){ return S.properties.reduce((a,p)=>a+fxConv(p.value, 
 function vehiclesTotal(){ return S.vehicles.reduce((a,v)=>a+fxConv(v.value, v.country),0); }
 function businessesTotal(){ return S.businesses.reduce((a,b)=>a+fxConv(b.value, b.country),0); }
 function netWorth(){
-  return Math.round(num(S.money) + num(S.dirty) + propertiesTotal() + vehiclesTotal() + businessesTotal() + investTotal() - debtTotal());
+  return Math.round(num(S.money) + num(S.dirty) + propertiesTotal() + vehiclesTotal() + businessesTotal() + investTotal() + (typeof collectionTotal === "function" ? collectionTotal() : 0) - debtTotal());
 }
 
 const LIFESTYLES = [
@@ -186,6 +192,9 @@ function sanitize(){
   if (S.martial) for (const a of Object.values(S.martial.arts)) a.m = clamp(num(a.m));
   for (const pt of S.pets || []){ for (const k of ["bond","hunger","stress","health"]) pt[k] = clamp(num(pt[k])); pt.trained = Math.max(0, Math.min(1, num(pt.trained))); }
   S.cyberSkill = clamp(num(S.cyberSkill));
+  if (S.dark){ S.dark.urge = clamp(S.dark.urge); S.dark.heat = clamp(S.dark.heat); S.dark.stealth = clamp(S.dark.stealth); S.dark.clues = Math.max(0, Math.round(num(S.dark.clues))); }
+  if (S.gig){ S.gig.skill = clamp(S.gig.skill); S.gig.exposure = clamp(S.gig.exposure); S.gig.rating = clamp(S.gig.rating, 30, 100); S.gig.audience = Math.max(0, Math.round(num(S.gig.audience))); }
+  for (const c of S.collection || []) c.value = Math.max(1, Math.round(num(c.value, 1)));
   if (S.prison){ S.prison.intim = clamp(num(S.prison.intim)); S.prison.remit = Math.max(0, num(S.prison.remit)); }
   p.age = Math.max(0, Math.round(num(p.age)));
   if (S.org){ S.org.heat = clamp(S.org.heat); S.org.respect = clamp(S.org.respect); for (const m of S.org.members) { m.loyalty = clamp(m.loyalty); m.skill = clamp(m.skill); } }

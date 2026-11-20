@@ -21,6 +21,9 @@ const PLACES = [
   { id:"airport",  ic:"✈️", name:"Aeroporto",           acts:["vacation"], ui:[["Emigrar para outro país","UI.close();UI.tab('assets')"]], minAge:18 },
   { id:"mall",     ic:"🛍️", name:"Shopping",            acts:["shopping","social","hobby"], minAge:10 },
   { id:"ngo",      ic:"🙌", name:"ONG / Comunidade",    acts:["volunteer","networking"] },
+  { id:"auction",  ic:"🔨", name:"Leilões e antiquários", ui:[["🏺 Comprar peças de museu e relíquias","UI.close();UI.collectShop()"],["Ver minha coleção","UI.close();UI.tab('assets')"]], minAge:18 },
+  { id:"guns",     ic:"🔫", name:"Loja de armas",       ui:[["Armas autorizadas e porte","UI.close();UI.armory(false)"]], minAge:18 },
+  { id:"stadium",  ic:"🏟️", name:"Estádio / Clube",     ui:[["Carreiras no esporte","UI.close();UI.tab('career')"],["🥋 Academia de lutas","UI.close();UI.martial()"]], minAge:8 },
 ];
 function viewActs(){
   const a = P().age, energy = ACT_LIMIT - S.activitiesThisYear;
@@ -46,6 +49,7 @@ function crimeCard(energy){
     h += O ? `<div class="row click" onclick="UI.org()"><div class="grow"><div class="t">🕶️ ${esc(O.name)} · ${DATA.orgRanks[O.rank].name}</div><div class="s">respeito ${Math.round(O.respect)} · calor ${Math.round(O.heat)}${isBoss()?` · ${O.members.length} capangas · ${O.ops.length} operações`:""} · sujo ${fmt(S.dirty)}</div></div><button class="btn sm">Gerenciar</button></div>`
       : `<div class="row"><div class="grow"><div class="t">Organização criminosa</div><div class="s">Funde a sua (habilidade 30 ou notoriedade 35, ${fmt(priceOf(20000))}) ou aguarde um convite.</div></div><button class="btn sm" onclick="UI.do(()=>foundOrg())">👑 Fundar</button></div>`;
   }
+  if (a >= 18) h += `<div class="row"><div class="grow"><div class="t">🕳️ Mercado paralelo de armas</div><div class="s">Sem registro, sem perguntas, sem volta.</div></div><button class="btn sm" onclick="UI.armory(true)">Entrar</button></div>` + darkPanel();
   h += `<div class="oddsline" style="margin:6px 0 10px">Crimes graves rendem dinheiro SUJO (precisa lavar). Antecedentes fecham concursos e derrubam reputação.</div>`;
   const cats = [...new Set(DATA.crimes.map(c=>c.cat))];
   for (const cat of cats){

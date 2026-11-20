@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>ClaudiLife — Simulador de Vida</title>
+<title>ClaudiLife — Simulador de Vida -drk</title>
 <meta name="description" content="ClaudiLife: simulador de vida completo, do nascimento ao legado. Carreira, economia, crime, relacionamentos, lutas e muito mais.">
 <meta name="theme-color" content="#f2f3f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0d0f15" media="(prefers-color-scheme: dark)">
@@ -291,7 +291,7 @@ details summary::before{content:"▸ ";transition:transform var(--t)} details[op
    feedback flutuante, balões de fala, ficha de NPC.
    ===================================================================== */
 /* ---------- Loading ---------- */
-#loading{position:fixed;inset:0;z-index:200;display:none;place-items:center;
+#loading{position:fixed;inset:0;z-index:200;display:none;place-items:center;cursor:progress;
   background:radial-gradient(900px 600px at 50% 20%, color-mix(in srgb,var(--accent) 35%, #0b0d14), #07080d 70%);color:#fff;cursor:pointer}
 #loading.on{display:grid;animation:fadeIn .25s var(--ease) both}
 #loading.out{animation:fadeOut .3s var(--ease) both}
@@ -500,6 +500,15 @@ body.hub-open{overflow:hidden}
 @media (max-width:420px){ .seg.tabs4{grid-template-columns:repeat(2,1fr)} }
 .seg.two{grid-template-columns:1fr 1fr}
 .card.dark .choices button,.card.dark .action{color:var(--text)}.card.dark .choices button small,.card.dark .action span{color:var(--muted)}
+/* tutorial */
+.tut .emoji{font-size:46px}
+.tut-dots{display:flex;gap:6px;justify-content:center;margin-bottom:10px}
+.tut-dots i{width:8px;height:8px;border-radius:8px;background:var(--surface3);transition:width var(--t) var(--ease),background var(--t)}
+.tut-dots i.on{width:22px;background:var(--accent)} .tut-dots i.done{background:color-mix(in srgb,var(--accent) 45%,var(--surface3))}
+.tut p{font-size:15.5px;line-height:1.55}
+.tut-nav{flex-direction:row}.tut-nav button{flex:1;text-align:center}
+.tut-off{display:flex;gap:8px;align-items:center;font-size:13.5px;color:var(--muted);margin:10px 0 0;min-height:44px}
+.tut-off input{width:20px;height:20px}
 </style>
 <style>/* src/styles/mobile.css */
 /* =====================================================================
@@ -729,6 +738,23 @@ footer.age{padding-left:max(var(--gutter), var(--sal));padding-right:max(var(--g
 .picklist button.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--surface2))}
 .picklist button b{color:var(--accent)}
 .hub-inner.still{animation:none}
+
+/* =====================================================================
+   MODO APP / TELA CHEIA (html.app-mode): a página não rola; quem rola é
+   o <body> (conteúdo do jogo), com overscroll travado — sem "puxar para
+   atualizar", sem efeito elástico e sem zoom de pinça acidental. Modais,
+   hub e linha do tempo continuam com rolagem interna própria.
+   ===================================================================== */
+html.app-mode{height:100%;overflow:hidden;overscroll-behavior:none;touch-action:pan-x pan-y}
+html.app-mode body{height:100%;height:var(--app-h);overflow-x:hidden;overflow-y:auto;overscroll-behavior:none;-webkit-overflow-scrolling:touch}
+html.app-mode.lock body{overflow:hidden}
+html.app-mode .modal,html.app-mode #hub{overscroll-behavior:contain}
+html.is-fullscreen body{background:var(--bg)}
+.fsbtn{display:grid;place-items:center;color:var(--text2)}
+.fsbtn svg{display:block}
+.idrow .fsbtn{margin-right:-4px}
+.hub-top{display:flex;justify-content:flex-end}
+.hub-top .hub-back{display:grid;place-items:center}
 </style>
 </head>
 <body>
@@ -1457,6 +1483,124 @@ DATA.petSpecies = [
 ];
 DATA.petNames = ["Bolt","Pipoca","Thor","Mel","Paçoca","Luna","Bidu","Nina","Rex","Fumaça","Kiara","Zeus","Simba","Amora","Tufão","Nala","Chico","Mingau","Shiva","Dante"];
 </script>
+<script>/* src/data/gigs.js */
+"use strict";
+/* =====================================================================
+   data/gigs.js — TRABALHO AUTÔNOMO e CARREIRAS ESPORTIVAS.
+
+   Gig (autônomo): base = renda anual de referência (moeda base) no ritmo
+   normal com habilidade média; drivers = atributos que multiplicam a renda
+   ({ looks:0.6 } → aparência pesa 60%); audience = cresce em clientes/
+   assinantes com o tempo; adult = 18+ e regras próprias de exposição e
+   risco; req = requisitos. Conteúdo adulto é tratado de forma não
+   explícita: só economia, estigma, saúde e segurança.
+   ===================================================================== */
+DATA.gigs = [
+  { id:"delivery",  cat:"Mobilidade",  emoji:"🛵", name:"Entregador(a) de app",          minAge:16, base:9000,  drivers:{ health:0.6 },                         stress:4, risk:"trânsito", desc:"Renda rápida, desgaste físico e risco no trânsito." },
+  { id:"rideshare", cat:"Mobilidade",  emoji:"🚗", name:"Motorista de aplicativo",       minAge:18, base:16000, drivers:{ health:0.3 },                         stress:6, risk:"assalto",  req:{ car:true }, desc:"Exige carro e carteira; assaltos acontecem." },
+  { id:"photo",     cat:"Criativo",    emoji:"📸", name:"Fotógrafo(a) freelancer",       minAge:16, base:14000, drivers:{ intelligence:0.3, looks:0.2 },        stress:3, audience:true, desc:"Casamentos, eventos e ensaios. Portfólio cresce com o tempo." },
+  { id:"design",    cat:"Tecnologia",  emoji:"🎨", name:"Designer freelancer",           minAge:16, base:18000, drivers:{ intelligence:0.5 },                   stress:5, audience:true, req:{ int:45 }, desc:"Clientes internacionais pagam melhor." },
+  { id:"dev",       cat:"Tecnologia",  emoji:"💻", name:"Programador(a) freelancer",     minAge:16, base:30000, drivers:{ intelligence:0.8 },                   stress:7, audience:true, req:{ int:58 }, desc:"Alta renda; faculdade de computação ou curso técnico ajudam." },
+  { id:"ptrainer",  cat:"Esporte",     emoji:"🏋️", name:"Personal trainer autônomo",     minAge:18, base:15000, drivers:{ health:0.5, looks:0.2 },              stress:3, audience:true, req:{ health:60 }, desc:"Clientes fiéis rendem bem; precisa estar em forma." },
+  { id:"street",    cat:"Arte",        emoji:"🎸", name:"Artista de rua",                minAge:12, base:4000,  drivers:{ talent:0.8 },                         stress:2, desc:"Música ou performance na praça. Pode viralizar." },
+  { id:"streamer",  cat:"Mídia",       emoji:"🎮", name:"Streamer / criador(a) de conteúdo", minAge:14, base:6000, drivers:{ looks:0.3, intelligence:0.2, fame:0.6 }, stress:5, audience:true, viral:true, desc:"Começa quase sem renda; seguidores trazem fama e dinheiro." },
+  { id:"consult",   cat:"Negócios",    emoji:"📊", name:"Consultor(a) independente",     minAge:24, base:42000, drivers:{ intelligence:0.5, reputation:0.5 },   stress:7, audience:true, req:{ edu:4 }, desc:"Exige diploma; reputação traz contratos grandes." },
+  { id:"adult",     cat:"Adulto (18+)",emoji:"🔞", name:"Criador(a) de conteúdo adulto (assinaturas)", minAge:18, base:12000, drivers:{ looks:0.9, fame:0.5 }, stress:6, audience:true, adult:true,
+    desc:"Renda por assinantes, sem teto. Risco de exposição, estigma e impacto nas relações e em empregos formais." },
+  { id:"escort",    cat:"Adulto (18+)",emoji:"🌙", name:"Acompanhante (programas)",      minAge:18, base:22000, drivers:{ looks:0.9 },                          stress:10, adult:true, danger:true,
+    desc:"Renda alta e imediata. Riscos reais: ISTs, clientes violentos, polícia (onde é ilegal) e estigma." },
+];
+/* Ritmo de trabalho autônomo: multiplica renda, estresse e riscos. */
+DATA.gigPace = [
+  { id:0, name:"Leve",    income:0.55, stress:0.5, risk:0.6 },
+  { id:1, name:"Normal",  income:1.0,  stress:1.0, risk:1.0 },
+  { id:2, name:"Intenso", income:1.55, stress:1.8, risk:1.5 },
+];
+/* Legalidade da prostituição por país (simplificado): legal | tolerada | ilegal */
+DATA.escortLaw = { BR:"tolerada", PT:"tolerada", DE:"legal", US:"ilegal", JP:"ilegal", MX:"tolerada", NG:"ilegal", IN:"ilegal" };
+
+/* IST adquirida no trabalho de acompanhante (nunca sorteada por acaso: manual). */
+DATA.illnesses.push({ id:"ist", name:"Infecção sexualmente transmissível (IST)", sev:5, cure:0.85, cost:900, chronic:false, detect:0.8, symptoms:1, progress:0.25, minAge:16, manual:true, risk:{} });
+
+/* ---------- Carreiras esportivas (athlete:true → contratos, lesões, títulos, aposentadoria) ---------- */
+for (const id of ["athlete","fighter","esports"]){ const c = DATA.careers.find(x => x.id === id); if (c) c.athlete = true; }
+DATA.careers.push(
+  { id:"football", tier:"esportivo", sector:"Esporte", name:"Futebol profissional", edu:0, minInt:0, minHealth:65, maxStartAge:21, stat:"health", talent:"sport", risk:3, fame:3, athlete:true, volatile:true,
+    levels:[{t:"Atleta da base",s:6000},{t:"Jogador(a) da Série B",s:38000},{t:"Jogador(a) da Série A",s:190000},{t:"Convocado(a) para a Seleção",s:1100000},{t:"Lenda do futebol",s:7000000}] },
+  { id:"basketball", tier:"esportivo", sector:"Esporte", name:"Basquete profissional", edu:0, minInt:0, minHealth:65, maxStartAge:22, stat:"health", talent:"sport", risk:2, fame:3, athlete:true, volatile:true,
+    levels:[{t:"Atleta universitário(a)",s:8000},{t:"Jogador(a) da liga nacional",s:45000},{t:"Estrela da liga",s:280000},{t:"Jogador(a) da liga norte-americana",s:3500000}] },
+  { id:"coach", tier:"esportivo", sector:"Esporte", name:"Técnico(a) / Treinador(a)", edu:2, minInt:40, minAge:24, stat:"intelligence", risk:0, fame:1,
+    levels:[{t:"Auxiliar técnico(a)",s:22000},{t:"Técnico(a) das categorias de base",s:38000},{t:"Técnico(a) profissional",s:160000},{t:"Técnico(a) da Seleção",s:950000}] },
+  { id:"scout", tier:"esportivo", sector:"Esporte", name:"Olheiro(a) / Scout", edu:2, minInt:45, minAge:22, stat:"intelligence", risk:0,
+    levels:[{t:"Olheiro(a) regional",s:18000},{t:"Olheiro(a) nacional",s:34000},{t:"Chefe de scouting",s:70000},{t:"Diretor(a) de recrutamento",s:140000}] },
+  { id:"referee", tier:"esportivo", sector:"Esporte", name:"Arbitragem", edu:2, minInt:40, minHealth:55, minAge:20, stat:"health", risk:1,
+    levels:[{t:"Árbitro(a) regional",s:14000},{t:"Árbitro(a) da federação",s:38000},{t:"Árbitro(a) da elite nacional",s:90000},{t:"Árbitro(a) FIFA",s:170000}] },
+  { id:"commentator", tier:"esportivo", sector:"Esporte", name:"Comentarista esportivo(a)", edu:4, major:"arts", minInt:45, stat:"looks", risk:0, fame:2,
+    levels:[{t:"Repórter de rádio",s:20000},{t:"Comentarista de TV fechada",s:60000},{t:"Comentarista de TV aberta",s:180000},{t:"Narrador(a) estrela",s:520000}] },
+  { id:"clubgm", tier:"esportivo", sector:"Esporte", name:"Gestão de clube", edu:4, major:"biz", minInt:55, minAge:26, stat:"intelligence", risk:0, fame:1,
+    levels:[{t:"Gerente de futebol",s:60000},{t:"Diretor(a) esportivo(a)",s:170000},{t:"CEO de clube",s:420000},{t:"Presidente de clube",s:900000}] },
+);
+DATA.clubNames = ["Atlético Central","Esporte Clube União","Real Horizonte","Sport Litoral","Grêmio da Serra","Clube Náutico do Porto","Inter Metropolitano","Juventus da Vila","FC Estrela","Dynamo do Norte","Olympique do Sul","Sporting da Capital"];
+</script>
+<script>/* src/data/collect.js */
+"use strict";
+/* =====================================================================
+   data/collect.js — COLECIONÁVEIS / MUSEU, ARSENAL e alvos do "lado
+   sombrio". Só dados.
+   Colecionável: price (base), appr = valorização média/ano, vol =
+   volatilidade, src: auction (leilão), dealer (antiquário), black
+   (mercado negro: barato, pode ser falso ou roubado → apreensão).
+   Arma: dmg/acc/lethal/ko viram um GOLPE no combate; discretion
+   (0–1, quão silenciosa/discreta), trace (0–1, rastreabilidade
+   balística/registro); legal: livre | license (porte) | illegal.
+   ===================================================================== */
+DATA.collectibles = [
+  { id:"coin",      cat:"Numismática",  emoji:"🪙", name:"Moeda de ouro do Império",        price:2500,     appr:0.04,  vol:0.08, src:"dealer" },
+  { id:"stamp",     cat:"Filatelia",    emoji:"📮", name:"Selo raro 'Olho de Boi'",          price:9000,     appr:0.045, vol:0.12, src:"auction" },
+  { id:"comic",     cat:"Cultura pop",  emoji:"📚", name:"Primeira edição de HQ clássica",   price:18000,    appr:0.06,  vol:0.2,  src:"auction" },
+  { id:"vinyl",     cat:"Música",       emoji:"💿", name:"Disco autografado por lenda do rock", price:7000,  appr:0.05,  vol:0.15, src:"dealer" },
+  { id:"jersey",    cat:"Esporte",      emoji:"👕", name:"Camisa de final de Copa autografada", price:25000, appr:0.05,  vol:0.18, src:"auction" },
+  { id:"watch",     cat:"Relojoaria",   emoji:"⌚", name:"Relógio suíço vintage",            price:45000,    appr:0.055, vol:0.1,  src:"dealer" },
+  { id:"fossil",    cat:"Paleontologia",emoji:"🦴", name:"Crânio fóssil de dinossauro",      price:180000,   appr:0.05,  vol:0.15, src:"auction" },
+  { id:"sword",     cat:"Antiguidade",  emoji:"⚔️", name:"Espada samurai do séc. XVII",      price:120000,   appr:0.045, vol:0.12, src:"auction" },
+  { id:"vase",      cat:"Antiguidade",  emoji:"🏺", name:"Vaso da dinastia Ming",            price:350000,   appr:0.05,  vol:0.2,  src:"auction" },
+  { id:"manuscript",cat:"Relíquia",     emoji:"📜", name:"Manuscrito medieval iluminado",    price:520000,   appr:0.055, vol:0.14, src:"auction" },
+  { id:"painting",  cat:"Arte",         emoji:"🖼️", name:"Óleo de mestre impressionista",    price:2200000,  appr:0.06,  vol:0.22, src:"auction" },
+  { id:"meteorite", cat:"Curiosidade",  emoji:"☄️", name:"Fragmento de meteorito marciano",  price:65000,    appr:0.04,  vol:0.25, src:"dealer" },
+  { id:"mummy",     cat:"Relíquia",     emoji:"⚱️", name:"Amuleto egípcio de tumba",         price:40000,    appr:0.07,  vol:0.3,  src:"black" },
+  { id:"idol",      cat:"Relíquia",     emoji:"🗿", name:"Ídolo pré-colombiano",             price:90000,    appr:0.07,  vol:0.3,  src:"black" },
+  { id:"stolenart", cat:"Arte",         emoji:"🖼️", name:"Quadro 'desaparecido' de museu",   price:600000,   appr:0.08,  vol:0.35, src:"black" },
+];
+DATA.collectSrc = { auction:"🔨 Casa de leilões", dealer:"🏛️ Antiquário", black:"🕳️ Mercado negro" };
+
+DATA.armory = [
+  { id:"kitchen",  emoji:"🔪", name:"Faca de cozinha",          price:60,    legal:"livre",   dmg:[10,18], acc:0.62, ko:0.08, lethal:0.09, discretion:0.8, trace:0.15, cost:9 },
+  { id:"bat",      emoji:"🏏", name:"Taco de beisebol",         price:180,   legal:"livre",   dmg:[12,22], acc:0.58, ko:0.2,  lethal:0.07, discretion:0.4, trace:0.1,  cost:12 },
+  { id:"tactical", emoji:"🗡️", name:"Faca tática",              price:450,   legal:"livre",   dmg:[13,22], acc:0.64, ko:0.1,  lethal:0.13, discretion:0.85,trace:0.2,  cost:9 },
+  { id:"knuckles", emoji:"🥊", name:"Soco-inglês",              price:120,   legal:"illegal", dmg:[9,16],  acc:0.68, ko:0.18, lethal:0.04, discretion:0.9, trace:0.05, cost:8 },
+  { id:"crossbow", emoji:"🏹", name:"Besta",                    price:1400,  legal:"livre",   dmg:[18,30], acc:0.5,  ko:0.15, lethal:0.22, discretion:0.75,trace:0.3,  cost:16 },
+  { id:"pistol",   emoji:"🔫", name:"Pistola (registrada)",     price:4500,  legal:"license", dmg:[22,38], acc:0.6,  ko:0.25, lethal:0.35, discretion:0.2, trace:0.85, cost:6 },
+  { id:"shotgun",  emoji:"🔫", name:"Espingarda de caça",       price:6000,  legal:"license", dmg:[28,45], acc:0.55, ko:0.35, lethal:0.42, discretion:0.1, trace:0.7,  cost:10 },
+  { id:"ghostgun", emoji:"🔫", name:"Pistola sem numeração",    price:9000,  legal:"illegal", dmg:[22,38], acc:0.58, ko:0.25, lethal:0.35, discretion:0.3, trace:0.25, cost:6 },
+  { id:"rifle",    emoji:"🪖", name:"Fuzil (contrabando)",      price:30000, legal:"illegal", dmg:[34,55], acc:0.6,  ko:0.4,  lethal:0.55, discretion:0.05,trace:0.5,  cost:12 },
+  { id:"suppressor",emoji:"🔇",name:"Pistola com supressor",   price:22000, legal:"illegal", dmg:[20,34], acc:0.6,  ko:0.22, lethal:0.33, discretion:0.75,trace:0.35, cost:6 },
+];
+/* Porte de arma: dificuldade por país (idade mínima, custo base, chance de aprovação). */
+DATA.gunLaw = { US:{ age:21, cost:300, ok:0.9 }, BR:{ age:25, cost:2500, ok:0.45 }, MX:{ age:21, cost:1500, ok:0.35 }, PT:{ age:21, cost:1200, ok:0.4 },
+  DE:{ age:21, cost:2000, ok:0.3 }, NG:{ age:25, cost:1500, ok:0.25 }, IN:{ age:21, cost:1000, ok:0.3 }, JP:{ age:25, cost:5000, ok:0.05 } };
+
+/* Perfis de alvo do "lado sombrio" (o código define quem é aceitável). */
+DATA.darkTargets = [
+  { id:"abuser",   guilty:true,  name:"Agressor que saiu impune",       risk:0.8, desc:"Absolvido por falha no processo; a vítima ainda tem medo." },
+  { id:"dealer",   guilty:true,  name:"Traficante que vende para crianças", risk:1.1, desc:"Protegido por seguranças armados." },
+  { id:"killer",   guilty:true,  name:"Assassino solto por tecnicalidade", risk:1.3, desc:"Perigoso, atento e imprevisível." },
+  { id:"corrupt",  guilty:true,  name:"Empresário que matou funcionários por negligência", risk:0.9, desc:"Rico, com seguranças e advogados." },
+  { id:"stranger", guilty:false, name:"Desconhecido aleatório",          risk:0.6, desc:"Ninguém que mereça. Só um alvo fácil." },
+  { id:"rival",    guilty:false, name:"Alguém que te humilhou",          risk:0.9, desc:"Pessoal demais: a polícia sempre olha primeiro para quem tinha motivo." },
+];
+/* Caçada que deu errado vira combate: o alvo luta pela vida. */
+DATA.fightProfiles.hunt = { name:"Caçada", str:[30,70], skill:[10,50], hp:[60,95], armed:[0.6,0.25,0.15], kill:"yes" };
+</script>
 <script>/* src/data/social.js */
 "use strict";
 /* data/social.js — personalidades de NPC, falas, entrevistas e dicas.
@@ -1715,7 +1859,7 @@ function saveSettings(){ try { localStorage.setItem("claudilife.settings", JSON.
    ===================================================================== */
 const SAVE_KEY = "claudilife.save.v6"; // legado: v7 usa slots (state/persistence.js)
 const LEGACY_SAVE_KEYS = ["claudilife.save.v6","claudilife.save.v5","claudilife.save.v4","claudilife.save.v3"];
-const SAVE_VERSION = 7;
+const SAVE_VERSION = 8;
 const PROPERTY_ID_MIGRATION = { townhouse:"sobrado" }; // ids removidos em versões antigas
 
 let S = null; // estado global da vida atual
@@ -1757,6 +1901,12 @@ function ensureState(st = S){
   st.pets = st.pets || [];
   if (st.flags.pet){ st.pets.push({ uid:uid(), sp:"dog_srd", name:st.flags.pet.name, age:Math.max(1, p.age - num(st.flags.pet.since, p.age)), bond:70, hunger:0, stress:10, neglect:0, health:90, trained:0, played:false }); delete st.flags.pet; }
   st.cyberSkill = clamp(num(st.cyberSkill)); st.prisonSkills = st.prisonSkills || [];
+  // v8: trabalho autônomo, coleção, arsenal, lado sombrio
+  st.gig = st.gig && byId(DATA.gigs, st.gig.id) ? st.gig : null;
+  st.collection = (st.collection || []).filter(c => byId(DATA.collectibles, c.id)).map(c => ({ country:home, ...c }));
+  st.arsenal = (st.arsenal || []).filter(w => byId(DATA.armory, w.id));
+  st.dark = Object.assign({ active:false, code:"code", urge:0, heat:0, clues:0, stealth:10, kills:0, victims:[], hunts:0 }, st.dark || {});
+  st.hunt = null;
   st.stats = Object.assign({ cyberOk:0, petsOwned:0, remitted:0, spouseScams:0 }, st.stats);
   if (st.prison){ st.prison.remit = num(st.prison.remit); st.prison.intim = num(st.prison.intim); st.prison.courses = st.prison.courses || {}; st.prison.cat = st.prison.cat || crimeCategory(st.prison.crime); }
   if (st.prison){ st.prison.security = st.prison.security || (st.prison.years >= 12 ? "máxima" : st.prison.years >= 5 ? "média" : "mínima"); st.prison.escAttempts = num(st.prison.escAttempts); st.prison.escBlock = num(st.prison.escBlock); }
@@ -1839,7 +1989,7 @@ function propertiesTotal(){ return S.properties.reduce((a,p)=>a+fxConv(p.value, 
 function vehiclesTotal(){ return S.vehicles.reduce((a,v)=>a+fxConv(v.value, v.country),0); }
 function businessesTotal(){ return S.businesses.reduce((a,b)=>a+fxConv(b.value, b.country),0); }
 function netWorth(){
-  return Math.round(num(S.money) + num(S.dirty) + propertiesTotal() + vehiclesTotal() + businessesTotal() + investTotal() - debtTotal());
+  return Math.round(num(S.money) + num(S.dirty) + propertiesTotal() + vehiclesTotal() + businessesTotal() + investTotal() + (typeof collectionTotal === "function" ? collectionTotal() : 0) - debtTotal());
 }
 
 const LIFESTYLES = [
@@ -1896,6 +2046,9 @@ function sanitize(){
   if (S.martial) for (const a of Object.values(S.martial.arts)) a.m = clamp(num(a.m));
   for (const pt of S.pets || []){ for (const k of ["bond","hunger","stress","health"]) pt[k] = clamp(num(pt[k])); pt.trained = Math.max(0, Math.min(1, num(pt.trained))); }
   S.cyberSkill = clamp(num(S.cyberSkill));
+  if (S.dark){ S.dark.urge = clamp(S.dark.urge); S.dark.heat = clamp(S.dark.heat); S.dark.stealth = clamp(S.dark.stealth); S.dark.clues = Math.max(0, Math.round(num(S.dark.clues))); }
+  if (S.gig){ S.gig.skill = clamp(S.gig.skill); S.gig.exposure = clamp(S.gig.exposure); S.gig.rating = clamp(S.gig.rating, 30, 100); S.gig.audience = Math.max(0, Math.round(num(S.gig.audience))); }
+  for (const c of S.collection || []) c.value = Math.max(1, Math.round(num(c.value, 1)));
   if (S.prison){ S.prison.intim = clamp(num(S.prison.intim)); S.prison.remit = Math.max(0, num(S.prison.remit)); }
   p.age = Math.max(0, Math.round(num(p.age)));
   if (S.org){ S.org.heat = clamp(S.org.heat); S.org.respect = clamp(S.org.respect); for (const m of S.org.members) { m.loyalty = clamp(m.loyalty); m.skill = clamp(m.skill); } }
@@ -3413,6 +3566,165 @@ EVENTS.push(
   ]},
 );
 </script>
+<script>/* src/events/work_ext.js */
+"use strict";
+/* =====================================================================
+   events/work_ext.js — eventos do trabalho autônomo (inclusive adulto,
+   sem conteúdo explícito) e da carreira esportiva.
+   ===================================================================== */
+EVENTS.push(
+/* ---------- Autônomo ---------- */
+{ id:"ev_gig_bigclient", emoji:"💼", title:"Cliente grande", age:[14,99], weight:0, cond:()=>!!S.gig,
+  setup:()=>({ amt: Math.round(gigIncome() * rfloat(0.3, 0.8)) + priceOf(500) }),
+  speech:()=> "Gostei do seu trabalho. Tenho um projeto grande, mas o prazo é apertado.",
+  text:c=> `Um cliente oferece ${fmt(c.amt)} por um trabalho urgente.`,
+  choices:c=>[
+    { label:"✅ Aceitar e virar noites", hint:"+estresse", run:()=>{ addMoney(c.amt); S.stats.earned += c.amt; addStress(12); S.gig.audience += rint(5, 20); S.gig.rating = clamp(S.gig.rating + 5, 30, 100); return `Entreguei no prazo. +${fmt(c.amt)} e um cliente fiel.`; } },
+    { label:"💬 Negociar mais prazo", run:()=> chance(0.6) ? (addMoney(Math.round(c.amt*0.9)), `Fechado com prazo melhor: ${fmt(Math.round(c.amt*0.9))}.`) : "O cliente procurou outra pessoa." },
+    { label:"✋ Recusar", run:()=> "Hoje não. Saúde mental em primeiro lugar." + (addStress(-3), "") },
+  ]},
+{ id:"ev_gig_noshow", emoji:"🧾", title:"Calote de cliente", age:[14,99], weight:0, cond:()=>!!S.gig,
+  setup:()=>({ amt: Math.round(gigIncome() * rfloat(0.08, 0.2)) + priceOf(200) }),
+  text:c=> `Um cliente sumiu sem pagar ${fmt(c.amt)}.`,
+  choices:c=>[
+    { label:"⚖️ Cobrar na Justiça (pequenas causas)", run:()=> chance(0.55) ? (addMoney(c.amt), "Ganhei a causa e recebi.") : "Processo arquivado: nunca vi o dinheiro." + fx({happiness:-3}) },
+    { label:"📣 Expor o caloteiro nas redes", run:()=>{ S.gig.audience += rint(5, 30); return chance(0.3) ? "Viralizou e ele pagou correndo." + fx({money:c.amt}) : "Ganhei seguidores, mas nada de dinheiro."; } },
+    { label:"🙈 Deixar pra lá", run:()=>{ addMoney(-0); addStress(4); return "Prejuízo assumido."; } },
+  ]},
+{ id:"ev_gig_viral", emoji:"🚀", title:"Viralizou!", age:[12,99], weight:0, cond:()=>!!S.gig,
+  text:()=> "Um vídeo seu explodiu. Milhões de visualizações em dois dias.",
+  choices:()=>[
+    { label:"📈 Aproveitar a onda (publicar todo dia)", run:()=>{ S.gig.audience = Math.round(S.gig.audience * rfloat(1.8, 3.5) + 200); addFame(rint(5, 12)); addStress(8); return "Seguidores choveram."; } },
+    { label:"🤝 Fechar contrato com uma marca", run:()=>{ const v = priceOf(rint(3000, 25000)); addMoney(v); addFame(4); return `Patrocínio de ${fmt(v)}.`; } },
+  ]},
+{ id:"ev_gig_robbery", emoji:"🔫", title:"Corrida perigosa", age:[18,99], weight:0, cond:()=>!!S.gig && !inPrison(),
+  speech:()=> say("Perdeu, perdeu! Passa o celular e a chave, porra!"),
+  text:()=> "O passageiro anunciou um assalto no meio da corrida.",
+  choices:()=>[
+    { label:"🙌 Entregar tudo", run:()=>{ const v = Math.min(Math.max(0,S.money), priceOf(rint(300, 1500))); addMoney(-v); addStress(12); return `Levaram ${fmt(v)} e o celular. Fiquei dias sem dirigir.`; } },
+    { label:"👊 Reagir", hint:"abre o combate · assaltante armado", run:()=>{ startFight("robbery", { amt: priceOf(800) }); return "Travei o carro e parti pra cima."; } },
+  ]},
+/* ---------- Adulto (não explícito) ---------- */
+{ id:"ev_adult_exposed", emoji:"📱", title:"Exposto(a)", age:[18,99], weight:0, cond:()=> !!S.gig && gigDef(S.gig.id).adult,
+  speech:()=> say(pick(["Mano, olha quem eu achei naquele site…","Vazaram umas fotos suas no grupo da família.","Tão compartilhando seu perfil no trabalho."])),
+  text:()=> "Seu trabalho adulto vazou para pessoas que você conhece.",
+  choices:()=>[
+    { label:"💪 Assumir publicamente, sem vergonha", run:()=> adultExposure(true) },
+    { label:"🤫 Negar e apagar o que der", run:()=> adultExposure(false) },
+    { label:"🚪 Parar com o trabalho adulto", run:()=>{ const r = adultExposure(false, 0.5); stopGig(); return r + " Encerrei o perfil."; } },
+  ]},
+{ id:"ev_escort_danger", emoji:"⚠️", title:"Cliente perigoso", age:[18,99], weight:0, cond:()=> S.gig?.id === "escort" && !inPrison(),
+  speech:()=> say("Você vai fazer o que eu mandar, entendeu?"),
+  text:()=> "Um cliente ficou agressivo e se recusa a deixar você ir embora.",
+  choices:()=>[
+    { label:"🏃 Fugir na primeira chance", run:()=> chance(0.65) ? "Consegui sair e chamei um carro." + (addStress(15), "") : "Ele me segurou antes da porta." + injure(rint(8, 20), "Um cliente violento", 0.3) },
+    { label:"🥊 Me defender", hint:"abre o combate", run:()=>{ startFight("robbery", { amt:0 }); return "Não vou apanhar calado(a)."; } },
+    { label:"📞 Acionar o botão de pânico / polícia", run:()=>{ const law = DATA.escortLaw[P().country]; if (law === "ilegal" && chance(0.4)){ const fine = priceOf(rint(500, 2000)); addMoney(-Math.min(Math.max(0,S.money), fine)); S.record.push({ crime:"prostituição", age:P().age, years:0 }); return `A polícia veio — e me autuou também. Multa de ${fmt(fine)}.`; } return "A polícia chegou rápido. O cliente foi preso."; } },
+  ]},
+{ id:"ev_escort_regular", emoji:"💎", title:"Cliente fixo rico", age:[18,99], weight:0, cond:()=> S.gig?.id === "escort",
+  setup:()=>({ amt: priceOf(rint(8000, 40000)) }),
+  speech:()=> "Quero exclusividade. Pago bem — e com discrição.",
+  text:c=> `Um cliente rico oferece ${fmt(c.amt)} por um acordo exclusivo de um ano.`,
+  choices:c=>[
+    { label:"🤝 Aceitar a exclusividade", run:()=>{ addMoney(c.amt); S.stats.earned += c.amt; S.gig.exposure = clamp(S.gig.exposure - 10); return `Ano mais tranquilo e ${fmt(c.amt)} na conta.`; } },
+    { label:"✋ Recusar: prefiro minha independência", run:()=> "Recusei. Ninguém manda em mim." },
+  ]},
+{ id:"ev_escort_police", emoji:"🚓", title:"Batida policial", age:[18,99], weight:0, cond:()=> S.gig?.id === "escort" && !inPrison(),
+  speech:()=> say("Polícia! Documentos, todo mundo!"),
+  text:()=> `Neste país (${country().name}), o trabalho sexual é crime. A polícia te abordou.`,
+  choices:()=>[
+    { label:"💵 Pagar a multa / fiança", run:()=>{ const v = priceOf(rint(800, 3000)); addMoney(-Math.min(Math.max(0,S.money), v)); S.record.push({ crime:"prostituição", age:P().age, years:0 }); addRep(-6); return `Paguei ${fmt(v)}. Fiquei com ficha.`; } },
+    { label:"🏃 Fugir", run:()=> chance(0.5) ? "Escapei pela janela do banheiro." : (sendToPrison(1, "prostituição e resistência"), "Fui pego(a). Detido(a) por resistência.") },
+  ]},
+/* ---------- Esportes ---------- */
+{ id:"ev_sport_contract", emoji:"✍️", title:"Fim de contrato", age:[14,60], weight:0, cond:()=> isAthlete(),
+  text:c=> `Seu contrato com o ${S.job.club} acabou. Sua forma: ${c.form}/100.`,
+  speech:()=> "Temos propostas na mesa. A decisão é sua.",
+  choices:c=>[
+    { label:`🏠 Renovar com o ${S.job.club}`, hint:`${c.renew.years} anos · salário ×${c.renew.mult.toFixed(2)}`, run:()=> signContract(null, c.renew.mult, c.renew.years) },
+    ...(c.big ? [{ label:`🚀 Transferência para o ${c.big.club}`, hint:`clube maior · ×${c.big.mult.toFixed(2)} · ${c.big.years} anos`, run:()=>{ addStat("happiness", 6); return signContract(c.big.club, c.big.mult, c.big.years); } }] : []),
+    ...(c.abroad ? [{ label:`✈️ Proposta do exterior: ${c.abroad.club}`, hint:`×${c.abroad.mult.toFixed(2)} · longe da família`, run:()=>{ for (const r of S.rels.filter(x=>["mother","father","partner","spouse"].includes(x.role))) r.rel = clamp(r.rel - 6); addStat("happiness", -3); return signContract(c.abroad.club, c.abroad.mult, c.abroad.years); } }] : []),
+    { label:"🆓 Ficar livre no mercado", run:()=>{ S.job.contract = 1; S.job.contractMult = 0.8; return "Vou esperar uma proposta melhor (salário menor enquanto isso)."; } },
+  ]},
+{ id:"ev_sport_retire", emoji:"👟", title:"Pendurar as chuteiras?", age:[14,80], weight:0, cond:()=> isAthlete(),
+  text:c=> c.forced ? "O corpo não aguenta mais o alto nível. É hora de parar." : "Seu corpo dá sinais de cansaço. Os clubes oferecem contratos menores.",
+  speech:()=> say("Foi uma carreira linda, mas todo mundo tem seu tempo."),
+  choices:c=>[
+    ...(c.forced ? [] : [{ label:"💪 Jogar mais uma temporada", run:()=>{ S.job.contract = 1; S.job.contractMult = Math.max(0.5, num(S.job.contractMult,1)*0.75); return "Mais um ano. Pelo amor ao esporte."; } }]),
+    { label:"📋 Aposentar e virar técnico(a)", run:()=>{ S.flags.exAthlete = true; achieve("retiredpro", "Aposentadoria do esporte profissional"); return hireDirect("coach", S.job.level >= 2 ? 1 : 0); } },
+    { label:"🎙️ Aposentar e virar comentarista", run:()=>{ S.flags.exAthlete = true; return hireDirect("commentator", P().fame > 40 ? 1 : 0); } },
+    { label:"🔎 Aposentar e virar olheiro(a)", run:()=>{ S.flags.exAthlete = true; return hireDirect("scout", 0); } },
+    { label:"🏖️ Só aposentar", run:()=>{ S.flags.exAthlete = true; endJob("Aposentadoria esportiva"); log("👟 Encerrei minha carreira de atleta.", "milestone"); return "Fim de uma era."; } },
+  ]},
+);
+/* Exposição de trabalho adulto: relações, emprego formal e reputação. */
+function adultExposure(owned, mult = 1){
+  const p = P(); let msg = [];
+  addRep(-12 * mult); addStress(14 * mult);
+  if (owned){ addFame(5); S.gig.audience = Math.round(S.gig.audience * 1.4); S.gig.exposure = 0; addStat("happiness", 2); msg.push("Muita gente julgou, mas meus assinantes aumentaram."); }
+  else { S.gig.exposure = clamp(S.gig.exposure - 30); msg.push("Apaguei o que pude. O estrago já estava feito."); }
+  for (const r of S.rels.filter(x => x.alive && ["mother","father","partner","spouse","fiance","sibling"].includes(x.role))){
+    const per = byId(DATA.personalities, r.personality); const ok = per && ["calm","generous","funny"].includes(per.id) && chance(0.6);
+    r.rel = clamp(r.rel - (ok ? 3 : rint(12, 30)) * mult); if (!ok) remember_npc(r, "Ficou sabendo do meu trabalho adulto");
+  }
+  const pt = partner(); if (pt && pt.rel < 30 && chance(0.5)){ if (pt.role === "spouse") divorce(pt, true); else pt.role = "ex"; msg.push(`${pt.first} terminou comigo.`); }
+  if (S.job && (career().exam || career().cleanRecord || /Educação|Saúde|Serviço Público|Justiça/.test(career().sector)) && chance(0.5 * mult)){ endJob("Demitido(a) após exposição"); msg.push("Meu emprego formal me demitiu \"por conduta\"."); addStat("happiness", -8); }
+  log(`📱 Meu trabalho adulto foi exposto. ${msg.join(" ")}`, "bad");
+  return msg.join(" ");
+}
+</script>
+<script>/* src/events/dark.js */
+"use strict";
+/* =====================================================================
+   events/dark.js — o lado sombrio (sempre pergunta ao jogador) e o
+   mercado de colecionáveis.
+   ===================================================================== */
+EVENTS.push(
+{ id:"ev_dark_awakening", emoji:"🌑", title:"Algo mudou em você", age:[18,90], weight:0, cond:()=> !dark().active && !inPrison(),
+  speech:()=> "Você não sentiu culpa. Sentiu… calma. Isso deveria te assustar.",
+  text:()=> "Depois do que aconteceu, uma voz fria passou a te acompanhar. O que fazer com ela?",
+  choices:()=>[
+    { label:"⚖️ Canalizar com um código: só quem escapou da justiça", hint:"abre o lado sombrio · impulso, suspeita e pistas", run:()=> awakenDark("code").msg },
+    { label:"🩸 Sem código, sem limites", hint:"karma despenca", run:()=> awakenDark("none").msg },
+    { label:"🧠 Procurar ajuda e enterrar isso", run:()=>{ addStress(-8); P().karma = clamp(P().karma + 6); return "Comecei terapia. A voz ficou mais baixa."; } },
+  ]},
+{ id:"ev_dark_urge", emoji:"🌘", title:"O impulso", age:[18,120], weight:0, cond:()=> dark().active && !inPrison(),
+  speech:()=> say(pick(["Respira. Ninguém pode perceber.","Já faz tempo demais…","Sorria no trabalho. Só mais um dia."])),
+  text:()=> `O impulso está em ${Math.round(dark().urge)}/100. Você mal dorme e anda irritado(a).`,
+  choices:()=>[
+    { label:"🎯 Planejar uma caçada", hint: huntBlock() || "abre o planejamento", run:()=>{ if (huntBlock()) return `Não dá agora: ${huntBlock().toLowerCase()}.`; S.flags.openHunt = true; return "Comecei a observar possíveis alvos."; } },
+    { label:"🥊 Descarregar no treino de luta", run:()=>{ dark().urge = clamp(dark().urge - rint(8, 16)); S.health.exercised = true; return "Socos no saco de pancada até os dedos sangrarem. Ajudou um pouco."; } },
+    { label:"🧠 Terapia intensiva", hint: fmt(priceOf(2500)), run:()=>{ const v = priceOf(2500); if (!canAfford(v)) return "Sem dinheiro para terapia."; addMoney(-v); dark().urge = clamp(dark().urge - rint(15, 30)); return "Falei sem falar demais. A pressão aliviou."; } },
+  ]},
+{ id:"ev_dark_suspicion", emoji:"👀", title:"Perguntas demais", age:[18,120], weight:0, cond:()=> dark().active && !inPrison(),
+  setup:()=>{ const close = S.rels.filter(r => r.alive && ["partner","spouse","sibling","friend","mother","father"].includes(r.role)); const r = close.length ? pick(close) : null; return { uid:r?.uid, who: r ? r.first : "Um colega de trabalho" }; },
+  speech:c=> say(pick(["Onde você estava aquela noite? Você chegou com a roupa molhada…","Você anda estranho(a). Tá escondendo alguma coisa de mim?","Achei umas coisas esquisitas no porta-malas…"])),
+  text:c=> `${c.who} está desconfiando de você. Suspeita policial atual: ${Math.round(dark().heat)}.`,
+  choices:c=>[
+    { label:"🎭 Mentir com naturalidade", hint:"inteligência e carisma ajudam", run:()=>{ if (chance(0.45 + P().stats.intelligence/300 + (hasTrait("charismatic") ? 0.15 : 0))){ dark().heat = clamp(dark().heat - 5); return `${c.who} acreditou. Por enquanto.`; } dark().heat = clamp(dark().heat + 12); const r = relBy(c.uid); if (r) r.rel = clamp(r.rel - 15); return "A mentira não colou. A desconfiança cresceu."; } },
+    { label:"🤫 Confessar só para essa pessoa", hint:"lealdade decide", run:()=>{ const r = relBy(c.uid), per = r && byId(DATA.personalities, r.personality); if (r && per && (per.id === "loyal" || r.rel > 85) && chance(0.6)){ r.rel = clamp(r.rel + 5); remember_npc(r, "Guarda meu segredo mais sombrio"); dark().heat = clamp(dark().heat - 10); return `${r.first} chorou… e prometeu guardar segredo.`; } dark().heat = clamp(dark().heat + 35); if (r) r.rel = 0; return "Foi direto para a polícia."; } },
+    { label:"🚪 Me afastar dessa pessoa", run:()=>{ const r = relBy(c.uid); if (r){ r.rel = clamp(r.rel - 25); } addStat("happiness", -5); return "Cortei contato. Mais solidão, menos risco."; } },
+  ]},
+{ id:"ev_task_force", emoji:"🕵️", title:"Força-tarefa", age:[18,120], weight:0, cond:()=> dark().active && !inPrison(),
+  speech:()=> say("A imprensa já chama de \"o caso dos desaparecidos\". A gente vai pegar esse filho da puta."),
+  text:()=> `A polícia criou uma força-tarefa. Suspeita: ${Math.round(dark().heat)} · pistas acumuladas: ${dark().clues}.`,
+  choices:()=>[
+    { label:"🧊 Ficar quieto(a) e viver normal", hint:"impulso sobe, suspeita cai", run:()=>{ dark().heat = clamp(dark().heat - 20); dark().urge = clamp(dark().urge + 15); return "Rotina impecável. Família, trabalho, sorrisos."; } },
+    { label:"🧩 Plantar um suspeito", hint:"inteligência · arriscado", run:()=>{ if (chance(0.3 + P().stats.intelligence/250)){ dark().heat = clamp(dark().heat - 45); P().karma = clamp(P().karma - 20); return "A polícia prendeu outra pessoa. O caso foi \"encerrado\"."; } dark().heat = clamp(dark().heat + 25); dark().clues++; return "A armação foi descoberta. Agora eles têm certeza de que alguém está brincando com eles."; } },
+    { label:"✈️ Fugir do país", run:()=>{ const from = P().country, d = pick(DATA.countries.filter(x => x.id !== from)); emigrate(d.id, true); dark().heat = clamp(dark().heat - 50); return `Recomecei em ${d.name}. Mas pistas não têm fronteira.`; } },
+    { label:"🙋 Me entregar", run:()=>{ const pen = DATA.penal[P().country] || { max:40 }; dark().active = false; P().karma = clamp(P().karma + 10); sendToPrison(Math.max(15, Math.round(pen.max*0.7)), "assassinatos em série (réu confesso)", "máxima"); return "Entrei na delegacia e contei tudo."; } },
+  ]},
+{ id:"ev_collector_offer", emoji:"🧐", title:"Um colecionador bateu à porta", age:[18,120], weight:0, cond:()=> collection().length > 0,
+  setup:()=>{ const c = pick(collection()); return { uid:c.uid, mult: rfloat(1.15, 1.6) }; },
+  speech:()=> "Procuro essa peça há anos. Faço uma oferta que você não vai recusar.",
+  text:c=>{ const it = collection().find(x => x.uid === c.uid); return it ? `Ele quer ${byId(DATA.collectibles, it.id).name} por ${fmt(fxConv(Math.round(it.value*c.mult), it.country))}.` : "A peça já não está com você."; },
+  choices:c=>[
+    { label:"🤝 Vender", run:()=>{ const it = collection().find(x => x.uid === c.uid); if (!it) return "A peça já não existe."; const d = byId(DATA.collectibles, it.id); if (it.fake && chance(0.7)) { S.collection = S.collection.filter(x => x !== it); addRep(-8); return "O perito dele viu que era falsa. Fiquei com fama de golpista."; } const v = fxConv(Math.round(it.value*c.mult), it.country); S.collection = S.collection.filter(x => x !== it); addMoney(v); S.stats.earned += v; return `Vendi ${d.name} por ${fmt(v)}.`; } },
+    { label:"💬 Pedir mais", run:()=> chance(0.4) ? (c.mult += 0.25, "Ele subiu a oferta… mas pediu um dia para pensar.") : "Ele se ofendeu e foi embora." },
+    { label:"✋ Não está à venda", run:()=> "Algumas coisas valem mais que dinheiro." },
+  ]},
+);
+</script>
 <!-- 6. sistemas de simulação -->
 <script>/* src/systems/modifiers.js */
 "use strict";
@@ -3872,6 +4184,7 @@ function checkupCost(){ return Math.round(priceOf(350) * (1 - effectivePlan().co
 /* Lesão aguda com possível sequela permanente (reduz o teto de saúde). */
 function injure(amount, cause, sequelaChance = 0.3){
   addStat("health", -amount);
+  if (amount >= 18) emit("hospital"); // ferimento sério = ambulância
   if (amount >= 12 && chance(sequelaChance)){
     const s = Math.round(amount * 0.25);
     S.health.sequelae = num(S.health.sequelae) + s;
@@ -3890,7 +4203,7 @@ function healthYear(){
   addictionsYear();
   // contrair doenças
   for (const d of DATA.illnesses){
-    if (S.illnesses.some(i=>i.id===d.id) || a < (d.minAge||0)) continue;
+    if (d.manual || S.illnesses.some(i=>i.id===d.id) || a < (d.minAge||0)) continue; // manual = só por causa específica (ex.: IST)
     let p = d.id === "flu" ? 0.07 : d.id === "depress" ? 0.012 : 0.0025 + Math.max(0, a - d.minAge)*0.00055;
     p *= illnessRisk(d) * (1.5 - st.health/100);
     if (chance(Math.min(0.2, p))){
@@ -3974,7 +4287,7 @@ function treatIllness(id, tierId){
   if (t.minStage && il.stage < t.minStage) return R(false, `Disponível apenas a partir do estágio ${DATA.stages[t.minStage].name}.`);
   const d = byId(DATA.illnesses, id), cost = treatmentCost(il, tierId);
   if (tierId !== "public" && !canAfford(cost)) return R(false, `Precisa de ${fmt(cost)} para o primeiro ano.`);
-  il.treated = true; il.tier = tierId;
+  il.treated = true; il.tier = tierId; emit("hospital");
   let extra = "";
   if (chance(t.risk)) extra = " Houve complicações." + injure(15, `Complicação no tratamento de ${d.name}`, 0.5);
   log(`Comecei tratamento (${t.name}) para ${d.name}${d.chronic ? " — controle contínuo" : ""}.${extra}`, extra ? "bad" : "");
@@ -4188,8 +4501,10 @@ function careerYear(){
     log(`Fui promovido(a) a ${c.levels[J.level].t}! 📈`, "good"); addStat("happiness",8); emit("promotion");
     if (J.level === c.levels.length-1) achieve("top_"+c.id, `Topo da carreira: ${c.levels[J.level].t}`);
   }
-  J.salary = salaryFor(c, J.level, J.levelYears);
+  J.salary = Math.round(salaryFor(c, J.level, J.levelYears) * num(J.contractMult, 1)); // contratos esportivos multiplicam
   if (c.fame) addFame(J.level * 3 + rfloat(-2,3));
+  // atletas: contrato, lesão, títulos e aposentadoria ficam em systems/sports.js
+  if (c.athlete){ if (J.perf < 25 && J.contract > 1 && chance(0.35)){ J.contract = 1; J.contractMult = Math.max(0.5, num(J.contractMult, 1) * 0.8); log(`📉 O ${J.club || "clube"} me deixou no banco e cortou meu salário; o contrato não deve ser renovado.`, "bad"); } return; }
   // demissão (mancha a reputação)
   if (J.perf < 28 && chance(0.4)){
     log(`Fui demitido(a) do cargo de ${c.levels[J.level].t} por baixo desempenho. 📦`, "bad");
@@ -5191,6 +5506,8 @@ function sendToPrison(years, crime, security){
   if (S.wanted){ years += num(S.wanted.remaining) + 2; crime += " + fuga anterior"; security = "máxima"; S.wanted = null; }
   years = Math.min(99, years);
   if (S.fight) S.fight.next = null; // torneio não continua atrás das grades
+  const illegalGuns = typeof weaponsOnArrest === "function" ? weaponsOnArrest() : 0;
+  if (illegalGuns){ years = Math.min(99, years + illegalGuns*2); crime += " + porte ilegal de arma"; }
   endJob("Preso"); S.partTime = null;
   if (S.edu.school && S.edu.school !== "fund" && S.edu.school !== "medio"){ log("Fui expulso(a) do curso.", "bad"); S.edu.school = null; }
   security = security || (years >= 12 ? "máxima" : years >= 5 ? "média" : "mínima");
@@ -5198,7 +5515,7 @@ function sendToPrison(years, crime, security){
   // dinheiro sujo é apreendido; organização perde força sem você
   if (S.dirty > 0){ log(`A polícia apreendeu ${fmt(S.dirty)} em dinheiro sujo.`, "bad"); S.dirty = 0; }
   if (S.org){ S.org.heat = clamp(S.org.heat - 20); if (!isBoss()) S.org.respect = clamp(S.org.respect + 8); }
-  emit("siren");
+  emit("jail");
   S.rental = null;
   log(`Fui condenado(a) a ${years >= 99 ? "PRISÃO PERPÉTUA" : years + " ano(s) de prisão"} por ${crime} (segurança ${security}). ⛓️`, "bad");
   addStat("happiness",-20); addNoto(15); addRep(-20); addStress(15); S.flags.caregiver = false;
@@ -5470,11 +5787,12 @@ function rankName(artId){ const a = byId(DATA.martialArts, artId); return a.rank
 
 /* Golpes conhecidos: básicos + desbloqueados por maestria. */
 function knownMoves({ tournamentArt } = {}){
-  return DATA.moves.filter(mv => {
+  const weapons = tournamentArt || typeof weaponMoves !== "function" ? [] : weaponMoves(); // armas não entram no ringue
+  return weapons.concat(DATA.moves.filter(mv => {
     if (!mv.art) return !(tournamentArt && mv.dirty);
     if (tournamentArt && tournamentArt !== "mma" && mv.art !== tournamentArt) return false;
     return mastery(mv.art) >= mv.req;
-  });
+  }));
 }
 function nextUnlock(artId){ return DATA.moves.filter(mv => mv.art === artId && mv.req > mastery(artId)).sort((a,b)=>a.req-b.req)[0] || null; }
 
@@ -5748,7 +6066,8 @@ function fightAction(act){
     L.push(`☠️ Tentei acabar com ${o.first}, mas errei — e abri a guarda.`); stunned = true;
   }
   else {
-    const mv = byId(DATA.moves, act); if (!mv) return;
+    const mv = byId(DATA.moves, act) || weaponMoves().find(m => m.id === act); if (!mv) return;
+    if (mv.weapon) F.usedWeapon = mv.weapon; // perícia: arma registrada em seu nome pesa
     F.me.sta = Math.max(0, F.me.sta - mv.cost);
     if (chance(moveHit(mv))){
       const crit = chance(0.06 + moveMastery(mv)/100*0.12 + mv.ko*0.4);
@@ -5809,7 +6128,7 @@ function endFight(result){
   if (F.myOutcome === "death") S.flags.forcedDeath = F.kind === "tournament" ? "lesão cerebral em uma luta oficial" : `ferimentos em uma briga com ${name}`;
   F.summary = s + (F.summary ? " " + F.summary : "");
   (FIGHT_AFTER[F.kind] || (()=>{}))(F);
-  if (F.oppOutcome === "death") registerKill(F);
+  if (F.oppOutcome === "death" && F.kind !== "hunt") registerKill(F); // caçadas usam o modelo de suspeita do lado sombrio
   else if (["grave","coma"].includes(F.oppOutcome) && F.kind !== "tournament") assaultCharge(F);
   if (F.kind !== "tournament") log(`🥊 ${F.summary}`, F.result === "win" && F.oppOutcome !== "death" ? "" : "bad");
   emit(F.result === "win" ? "fightWin" : "fightLose");
@@ -5850,6 +6169,7 @@ const FIGHT_AFTER = {
   },
   revenge(F){ if (F.result === "win") F.summary += " Encerrei essa história — por enquanto."; else addStat("happiness", -6); },
   tournament(F){ if (F.oppOutcome === "death") martial().banUntil = P().age + 2; },
+  hunt(F){ huntFightAfter(F); },
 };
 
 /* Lesão grave / coma fora do ringue: lesão corporal grave. */
@@ -5897,7 +6217,8 @@ function registerKill(F){
   else if (excess){ label = "homicídio doloso"; years = rint(12, Math.min(25, pen.max)); }
   else { label = "lesão corporal seguida de morte"; years = rint(4, 12); }
   const wit = { street:rint(1,6), provoke:rint(1,5), robbery:rint(0,3), prison:rint(2,8), rival:rint(0,3), hit:rint(0,2), revenge:rint(0,4) }[F.kind] ?? 2;
-  const pCaught = clamp((0.2 + wit*0.1 + (S.record.length ? 0.1 : 0) - num(S.crimeSkill)/300 - (S.org ? orgPower()/500 : 0) + (F.kind === "prison" ? 0.6 : 0)) * 100, 5, 95) / 100;
+  const gun = F.usedWeapon && arsenal().find(w => w.id === F.usedWeapon), gunTrace = gun ? byId(DATA.armory, gun.id).trace * (gun.registered ? 0.35 : 0.12) : 0;
+  const pCaught = clamp((0.2 + wit*0.1 + gunTrace + (S.record.length ? 0.1 : 0) - num(S.crimeSkill)/300 - (S.org ? orgPower()/500 : 0) + (F.kind === "prison" ? 0.6 : 0)) * 100, 5, 95) / 100;
   F.summary += ` ${wit ? `${wit} testemunha(s) viram tudo.` : "Ninguém viu."}`;
   if (F.kind === "prison" && S.prison){
     if (years > 0 && chance(pCaught)){ S.prison.years = Math.min(99, S.prison.years + years); S.prison.security = "máxima"; S.record.push({ crime:label, age:P().age, years }); F.summary += ` Condenado(a) por ${label}: +${years >= 99 ? "perpétua" : years + " anos"}. Transferido(a) para segurança máxima.`; }
@@ -5914,6 +6235,7 @@ function registerKill(F){
     schedule("homicideCase", rint(1, 3), { name, label, years, p: pCaught }, `A polícia investiga a morte de ${name}.`);
     F.summary += " Saí antes da polícia chegar. Mas a investigação vai começar.";
   }
+  if (S.dark && !S.dark.active && P().age >= 18 && chance(0.4)) enqueue("ev_dark_awakening");
   // família / aliados da vítima
   if (chance(F.kind === "rival" ? 0.8 : 0.45)) schedule("victimRevenge", rint(1, 5), { name, kin: F.kind === "rival" ? "a facção dele" : pick(["o irmão","o primo","o filho","a irmã","o melhor amigo"]) }, `A família de ${name} não vai esquecer.`);
 }
@@ -6372,7 +6694,7 @@ function doProcedure(id){
   if (P().age < d.minAge) return R(false, `Idade mínima: ${d.minAge}.`);
   if (inPrison()) return R(false, "Você está preso(a).");
   const price = priceOf(d.price); if (!canAfford(price)) return R(false, `Custa ${fmt(price)}.`);
-  addMoney(-price); look().procedures++;
+  addMoney(-price); look().procedures++; emit("hospital");
   const risk = d.risk * (P().age > 60 ? 2 : 1) * (P().stats.health < 40 ? 1.5 : 1);
   if (chance(risk)){
     const h = rint(...d.harm);
@@ -6601,6 +6923,487 @@ function petAttack(pt, sp){
   if (chance(0.3) && adult()) sendToPrison(rint(1, 3), "lesão corporal culposa (ataque de animal)");
 }
 </script>
+<script>/* src/systems/gigs.js */
+"use strict";
+/* =====================================================================
+   systems/gigs.js — TRABALHO AUTÔNOMO (freelance, apps, criadores,
+   trabalho adulto). Pode ser renda principal ou bico junto do emprego
+   (bico + emprego = mais estresse e ritmo máximo "Normal").
+
+   Renda anual = base × Π(atributos) × (0,6 + habilidade/100)
+                 × público (clientes/assinantes) × ritmo × país
+     • atributo d com peso w: (0,4 + valor/100·1,2)^w  (média ≈ 1)
+     • público: 1 + log10(1 + audiência/50), cresce com tempo, fama,
+       aparência e marketing; despenca com escândalos.
+   Adulto (18+): exposição acumula a cada ano (mais no ritmo intenso e
+   com fama); quando "vaza", o jogador decide como reagir. Acompanhante:
+   ISTs, clientes violentos (abre combate), polícia onde é ilegal.
+   ===================================================================== */
+const gigDef = id => byId(DATA.gigs, id);
+const gig = () => S.gig;
+
+function gigBlock(d){
+  const p = P(), rq = d.req || {};
+  if (p.age < d.minAge) return `Idade mínima ${d.minAge}`;
+  if (inPrison()) return "Você está preso(a)";
+  if (rq.car && (!S.vehicles.length || !S.flags.license)) return "Precisa de carro e carteira";
+  if (rq.int && p.stats.intelligence < rq.int) return `Inteligência ${rq.int}`;
+  if (rq.health && p.stats.health < rq.health) return `Saúde ${rq.health}`;
+  if (rq.edu && S.edu.level < rq.edu) return `Requer ${DATA.eduLevels[rq.edu]}`;
+  if (S.gig?.id === d.id) return "Você já faz isso";
+  return null;
+}
+function startGig(id){
+  const d = gigDef(id), why = gigBlock(d); if (why) return R(false, why);
+  if (S.gig) stopGig(true);
+  S.gig = { id, years:0, skill: Math.round(15 + P().stats.intelligence/10), audience: d.audience ? rint(2, 15) : 0, pace: S.job ? 0 : 1, exposure:0, lastIncome:0, rating: 70 };
+  if (d.adult) remember(`Comecei como ${d.name.toLowerCase()}. Dinheiro, mas também exposição e risco.`, "pending");
+  log(`${d.emoji} Comecei a trabalhar por conta própria: ${d.name}.`, "");
+  return R(true, `Agora você é ${d.name.toLowerCase()}${S.job ? " (como bico, além do emprego)" : ""}.`);
+}
+function stopGig(silent){
+  const G = S.gig; if (!G) return R(false, "Você não trabalha por conta.");
+  const d = gigDef(G.id); S.gig = null;
+  if (!silent) log(`${d.emoji} Parei de trabalhar como ${d.name.toLowerCase()} após ${G.years} ano(s).`, "");
+  return R(true, `Encerrou: ${d.name}.`);
+}
+function setGigPace(i){
+  const G = S.gig; if (!G) return R(false, "?");
+  if (S.job && i === 2) return R(false, "Com emprego fixo, o bico não passa de ritmo Normal.");
+  G.pace = i; return R(true, `Ritmo: ${DATA.gigPace[i].name}.`);
+}
+/* Marketing/divulgação: gasta energia e dinheiro, cresce o público. */
+function promoteGig(){
+  const G = S.gig; if (!G) return R(false, "?");
+  const d = gigDef(G.id); if (!d.audience) return R(false, "Esse trabalho não depende de divulgação.");
+  const cost = priceOf(300 + G.years*80); if (!canAfford(cost)) return R(false, `Divulgação custa ${fmt(cost)}.`);
+  if (!spendEnergy()) return R(false, "Sem energia este ano.");
+  addMoney(-cost);
+  const g = Math.round((10 + G.audience*0.15) * rfloat(0.6, 1.5) * (0.7 + P().stats.looks/200 + P().fame/150));
+  G.audience += g; if (d.adult) G.exposure = clamp(G.exposure + 6);
+  return R(true, `Divulgação feita: +${g} ${d.adult ? "assinantes" : "clientes/seguidores"} (${fmt(cost)}).`);
+}
+function practiceGig(){
+  const G = S.gig; if (!G) return R(false, "?");
+  if (!spendEnergy()) return R(false, "Sem energia este ano.");
+  const g = Math.round(rint(4, 9) * dim("gigskill")); S.actCount.gigskill = num(S.actCount.gigskill) + 1;
+  G.skill = clamp(G.skill + g); return R(true, `Me aperfeiçoei: habilidade ${Math.round(G.skill)} (+${g}).`);
+}
+
+function statFactor(d){
+  const p = P(); let f = 1;
+  for (const [k, w] of Object.entries(d.drivers || {})){
+    const v = k === "talent" ? Math.max(p.talents.music, p.talents.acting) : k === "fame" ? p.fame : k === "reputation" ? p.reputation : p.stats[k];
+    f *= Math.pow(0.4 + num(v)/100*1.2, w);
+  }
+  return f;
+}
+/* Renda estimada (usada no tick e exibida na UI). */
+function gigIncome(G = S.gig){
+  if (!G) return 0;
+  const d = gigDef(G.id), pace = DATA.gigPace[G.pace];
+  const aud = d.audience ? 1 + Math.log10(1 + G.audience/50) : 1;
+  const mult = (G.id === "dev" || G.id === "design") && (S.edu.degrees.includes("cs") || S.edu.techs.includes("t_it")) ? 1.25 : 1;
+  return Math.round(wageOf(d.base) * statFactor(d) * (0.6 + G.skill/100) * aud * pace.income * mult * (0.85 + 0.15*country().opp) * (G.rating/80));
+}
+
+function gigYear(){
+  const G = S.gig; if (!G) return;
+  if (inPrison()){ S.gig = null; return; }
+  const d = gigDef(G.id), pace = DATA.gigPace[G.pace], Y = S.yearSummary, p = P();
+  G.years++;
+  // crescimento natural do público e da habilidade
+  if (d.audience){
+    const growth = (0.08 + p.stats.looks/900 + p.fame/500 + G.skill/1000) * rfloat(0.6, 1.4) * (G.pace === 0 ? 0.6 : G.pace === 2 ? 1.3 : 1);
+    G.audience = Math.round(G.audience * (1 + growth) + rint(2, 12));
+    if (d.viral && chance(0.04 + p.stats.looks/2000)) enqueue("ev_gig_viral");
+  }
+  G.skill = clamp(G.skill + rfloat(1, 4));
+  G.rating = clamp(G.rating + rfloat(-6, 6) + (G.skill - 50)/25, 30, 100);
+  // renda
+  const inc = gigIncome(G); G.lastIncome = inc;
+  addMoney(inc); Y.income += inc; S.stats.earned += inc; Y.lines.push([`${d.emoji} ${d.name}`, inc]);
+  addStress(d.stress * pace.stress * (S.job ? 1.5 : 1) - 3);
+  if (d.id === "streamer" || d.id === "street") addFame(Math.min(4, G.audience/2000) + (d.id === "street" ? 0.3 : 0));
+  // riscos específicos
+  const r = pace.risk;
+  if (G.id === "delivery" && chance(0.05 * r)) log("🛵 Levei um tombo de moto na entrega." + injure(rint(6, 18), "Um acidente de entrega", 0.25), "bad");
+  if (G.id === "rideshare" && chance(0.06 * r * country().crime)) enqueue("ev_gig_robbery");
+  if (d.audience && !d.adult && chance(0.08)) enqueue(chance(0.5) ? "ev_gig_bigclient" : "ev_gig_noshow");
+  if (d.adult){
+    G.exposure = clamp(G.exposure + rint(3, 7) * r + p.fame/25);
+    addRep(-0.5);
+    if (chance(G.exposure/220)) enqueue("ev_adult_exposed");
+    if (G.id === "escort") escortRisks(G, r);
+  }
+}
+/* Acompanhante: saúde, violência e polícia. */
+function escortRisks(G, r){
+  const law = DATA.escortLaw[P().country] || "tolerada";
+  if (chance(0.07 * r * (G.pace === 2 ? 1.3 : 1)) && !S.illnesses.some(i => i.id === "ist")){
+    S.illnesses.push({ id:"ist", years:0, stage:1, diagnosed:true, treated:false, tier:null });
+    log("🦠 Fui diagnosticado(a) com uma IST. Preciso tratar antes que piore.", "bad", ["health"]); emit("hospital");
+  }
+  if (chance(0.06 * r)) enqueue("ev_escort_danger");
+  else if (chance(0.05)) enqueue("ev_escort_regular");
+  if (law === "ilegal" && chance(0.08 * r)) enqueue("ev_escort_police");
+}
+</script>
+<script>/* src/systems/sports.js */
+"use strict";
+/* =====================================================================
+   systems/sports.js — VIDA DE ATLETA (carreiras com athlete:true).
+   • Contrato (J.contract anos, J.club, J.contractMult no salário). No fim
+     do contrato, o jogador escolhe: renovar, transferência para clube
+     maior (se estiver bem), proposta do exterior ou ficar livre.
+   • Lesões: chance anual pelo risco do esporte, ritmo de treino e idade;
+     lesão grave tira a temporada (desempenho despenca).
+   • Títulos: chance pela forma; dão bônus em dinheiro, fama e conquistas.
+   • Declínio físico depois dos 30 (eSports: 26) e aposentadoria
+     esportiva com transição para técnico(a), comentarista ou olheiro(a).
+   ===================================================================== */
+const isAthlete = () => !!(S.job && career()?.athlete);
+const peakEnd = c => c.id === "esports" ? 26 : 30;
+const retireAge = c => c.id === "esports" ? 31 : c.id === "fighter" ? 38 : 36;
+
+/* Forma = talento esportivo, saúde, desempenho e (lutas) maestria. */
+function athleteForm(){
+  const c = career(), p = P(), J = S.job;
+  const age = p.age, decline = Math.max(0, age - peakEnd(c)) * 3.5;
+  const base = c.id === "esports" ? p.stats.intelligence*0.5 + p.talents.sport*0.1 : p.talents.sport*0.45 + p.stats.health*0.3;
+  return clamp(base + J.perf*0.3 + (c.id === "fighter" ? bestMastery()*0.2 : 0) - decline - num(J.injured)*25);
+}
+function sportsYear(){
+  if (!isAthlete()) return;
+  const c = career(), J = S.job, p = P();
+  J.club = J.club || pick(DATA.clubNames);
+  if (J.contract === undefined) J.contract = rint(2, 4);
+  J.injured = 0;
+  // lesões
+  const riskInj = (0.03 + c.risk*0.025) * (J.effort === 2 ? 1.6 : J.effort === 0 ? 0.7 : 1) * (p.age > 30 ? 1.5 : 1) * (p.stats.health < 50 ? 1.4 : 1);
+  if (chance(riskInj)){
+    const grave = chance(0.3);
+    J.injured = grave ? 1 : 0; J.perf = clamp(J.perf - (grave ? 25 : 8));
+    const s = injure(grave ? rint(14, 26) : rint(4, 10), grave ? "Uma lesão grave no esporte" : "Uma lesão no esporte", grave ? 0.45 : 0.1);
+    log(`🩹 ${grave ? "Lesão grave: fiquei fora da temporada." : "Lesão leve: algumas semanas parado(a)."}${s}`, "bad", ["health","work"]);
+    if (grave) emit("hospital");
+    if (grave && p.age > 32 && chance(0.25)) return enqueue("ev_sport_retire", { forced:true });
+  }
+  // títulos
+  const form = athleteForm();
+  if (!J.injured && chance(clamp((form - 45)/220 + J.level*0.03, 0.01, 0.45))){
+    const bonus = Math.round(J.salary * rfloat(0.2, 0.7));
+    addMoney(bonus); S.yearSummary.income += bonus; S.stats.earned += bonus; S.yearSummary.lines.push(["🏆 Bônus por título", bonus]);
+    J.titles = num(J.titles) + 1; addFame(3 + J.level*2); addRep(3);
+    log(`🏆 Fui campeão(ã) com o ${J.club}! Bônus de ${fmt(bonus)}.`, "milestone", ["work"]);
+    achieve("sporttitle", "Campeão(ã) no esporte profissional");
+    if (J.titles >= 5) achieve("sportlegend", "Cinco títulos no esporte");
+  }
+  // contrato e aposentadoria
+  J.contract--;
+  if (p.age >= retireAge(c) || (p.age >= retireAge(c) - 3 && chance(0.25))) enqueue("ev_sport_retire", { forced: p.age >= retireAge(c) + 2 });
+  else if (J.contract <= 0) enqueue("ev_sport_contract", sportOffers());
+}
+/* Gera as propostas de fim de contrato conforme a forma. */
+function sportOffers(){
+  const form = athleteForm(), J = S.job;
+  const others = DATA.clubNames.filter(n => n !== J.club);
+  return { form: Math.round(form),
+    renew: { mult: Math.max(0.7, num(J.contractMult, 1) * (form > 60 ? rfloat(1.05, 1.25) : rfloat(0.75, 0.95))), years: rint(2, 4) },
+    big: form >= 62 ? { club: pick(others), mult: num(J.contractMult, 1) * rfloat(1.4, 2.1), years: rint(3, 5) } : null,
+    abroad: form >= 55 ? { club: pick(["FC Bavaria","Lisboa Sporting","Tokyo United","LA Galaxy Stars","Club de México","Lagos Rangers"]), mult: num(J.contractMult, 1) * rfloat(1.8, 3), years: rint(2, 4) } : null };
+}
+function signContract(club, mult, years){
+  const J = S.job; if (!J) return "";
+  const moved = club && club !== J.club;
+  if (club) J.club = club; J.contractMult = Math.round(mult*100)/100; J.contract = years;
+  J.salary = Math.round(salaryFor(career(), J.level, J.levelYears) * J.contractMult);
+  log(`✍️ ${moved ? `Transferência para o ${J.club}` : `Renovei com o ${J.club}`}: ${years} ano(s), ${fmt(J.salary)}/ano.`, "milestone", ["work","money"]);
+  if (moved) addFame(2);
+  return `Contrato assinado: ${fmt(J.salary)}/ano por ${years} ano(s).`;
+}
+/* Treino extra (ação do jogador): melhora o desempenho, com risco de lesão. */
+function extraTraining(){
+  if (!isAthlete()) return R(false, "Só para atletas.");
+  if (!spendEnergy()) return R(false, "Sem energia este ano.");
+  const J = S.job; J.perf = clamp(J.perf + rint(4, 9) * dim("sporttrain")); S.actCount.sporttrain = num(S.actCount.sporttrain) + 1;
+  P().talents.sport = clamp(P().talents.sport + rint(1, 3)); S.health.exercised = true;
+  if (chance(0.06 + career().risk*0.015)) return R(false, "Exagerei no treino e me lesionei." + injure(rint(5, 12), "O treino extra", 0.15));
+  return R(true, `Treino extra concluído. Desempenho ${Math.round(J.perf)}.`);
+}
+/* Transição pós-carreira: contrata direto, sem a fila de requisitos. */
+function hireDirect(id, level = 0){
+  const c = byId(DATA.careers, id); if (!c) return "";
+  if (S.job) endJob("Aposentadoria esportiva");
+  S.job = { careerId:id, level, levelYears:0, years:0, perf:60, effort:1, salary: salaryFor(c, level, 0) };
+  log(`💼 Comecei nova carreira: ${c.levels[level].t} (${fmt(S.job.salary)}/ano).`, "milestone");
+  return `Agora sou ${c.levels[level].t}.`;
+}
+</script>
+<script>/* src/systems/collect.js */
+"use strict";
+/* =====================================================================
+   systems/collect.js — COLEÇÃO (museu/antiguidades) e ARSENAL.
+   Coleção: entra no patrimônio, valoriza/oscila por ano (e com o ciclo
+   econômico), seguro anual de 1,5% protege contra roubo; peças do
+   mercado negro podem ser falsas ou apreendidas. Empréstimo a museu dá
+   reputação, fama e uma taxa.
+   Arsenal: armas viram golpes no combate (fora de torneios). Armas de
+   fogo registradas exigem PORTE; armas ilegais pesam muito se você for
+   preso(a) e armas registradas em seu nome facilitam a perícia.
+   ===================================================================== */
+const collection = () => (S.collection ||= []);
+const arsenal = () => (S.arsenal ||= []);
+function collectionTotal(){ return collection().reduce((a, c) => a + fxConv(c.value, c.country), 0); }
+
+function buyCollectible(id){
+  const d = byId(DATA.collectibles, id); if (!d) return R(false, "?");
+  if (!adult()) return R(false, "Só maiores de idade.");
+  if (inPrison()) return R(false, "Você está preso(a).");
+  const fee = d.src === "auction" ? 0.12 : d.src === "dealer" ? 0.05 : 0;
+  const price = Math.round(priceOf(d.price) * (d.src === "black" ? rfloat(0.45, 0.7) : rfloat(0.92, 1.12)));
+  const total = Math.round(price * (1 + fee));
+  if (!canAfford(total)) return R(false, `Precisa de ${fmt(total)}${fee ? ` (inclui ${Math.round(fee*100)}% de comissão)` : ""}.`);
+  addMoney(-total); S.stats.spent += total;
+  const fake = d.src === "black" && chance(0.25);
+  collection().push({ uid:uid(), id, value: Math.round(priceOf(d.price) * rfloat(0.9, 1.05)), paid: total, age:P().age, insured:false, country:P().country, fake, hot: d.src === "black" });
+  if (d.src === "black"){ addNoto(3); S.crimeSkill = clamp(S.crimeSkill + 1); }
+  log(`${d.emoji} Comprei: ${d.name} por ${fmt(total)}.`, "", ["money"]);
+  emit("buy");
+  if (S.collection.length >= 5) achieve("collector", "Colecionador(a) com 5 peças");
+  return R(true, `${d.name} agora é sua! ${d.src === "black" ? "⚠️ Procedência duvidosa." : ""}`);
+}
+function sellCollectible(u){
+  const c = collection().find(x => x.uid === u); if (!c) return R(false, "?");
+  const d = byId(DATA.collectibles, c.id);
+  if (c.fake){ S.collection = S.collection.filter(x => x !== c); log(`🧐 A avaliação revelou que ${d.name} era FALSIFICAÇÃO. Perdi tudo o que paguei.`, "bad"); return R(false, "Era falso! O avaliador recusou a peça."); }
+  const v = Math.round(c.value * (c.hot ? 0.5 : 0.9));                   // leiloeiro leva 10%; peça "quente" vende pela metade
+  S.collection = S.collection.filter(x => x !== c); addMoney(fxConv(v, c.country)); S.stats.earned += v;
+  log(`${d.emoji} Vendi ${d.name} por ${fmt(fxConv(v, c.country))}.`, "good", ["money"]);
+  return R(true, `Vendido por ${fmt(fxConv(v, c.country))}.`);
+}
+function insureCollectible(u){
+  const c = collection().find(x => x.uid === u); if (!c) return R(false, "?");
+  if (c.hot) return R(false, "Nenhuma seguradora aceita peça sem procedência.");
+  c.insured = !c.insured; return R(true, c.insured ? `Segurado: ${fmt(Math.round(c.value*0.015))}/ano.` : "Seguro cancelado.");
+}
+function lendToMuseum(u){
+  const c = collection().find(x => x.uid === u); if (!c) return R(false, "?");
+  if (c.hot) return R(false, "Um museu sério vai checar a procedência… melhor não.");
+  if (c.lentAge === P().age) return R(false, "Já emprestada este ano.");
+  c.lentAge = P().age; const fee = Math.round(c.value * 0.02);
+  addMoney(fxConv(fee, c.country)); addRep(3); addFame(c.value > priceOf(300000) ? 3 : 1);
+  return R(true, `Emprestei ao museu: +${fmt(fxConv(fee, c.country))}, reputação e prestígio.`);
+}
+function collectYear(){
+  const Y = S.yearSummary;
+  for (const c of [...collection()]){
+    const d = byId(DATA.collectibles, c.id);
+    c.value = Math.max(1, Math.round(c.value * (1 + d.appr + phase().invest*0.4 + rfloat(-d.vol, d.vol))));
+    if (c.insured){ const prem = Math.round(fxConv(c.value * 0.015, c.country)); if (S.money >= prem){ addMoney(-prem); Y.expenses += prem; Y.lines.push([`Seguro: ${d.name}`, -prem]); } else c.insured = false; }
+    if (chance(0.025 * country().crime * (c.value > priceOf(100000) ? 1.5 : 1))){
+      S.collection = S.collection.filter(x => x !== c);
+      if (c.insured){ const pay = fxConv(Math.round(c.value*0.9), c.country); addMoney(pay); log(`🚨 Roubaram ${d.name}. O seguro pagou ${fmt(pay)}.`, "bad"); }
+      else log(`🚨 Roubaram ${d.name} (sem seguro). Prejuízo de ${fmt(fxConv(c.value, c.country))}.`, "bad");
+      continue;
+    }
+    if (c.hot && chance(0.06)){ S.collection = S.collection.filter(x => x !== c); addNoto(8); S.record.push({ crime:"receptação de bem cultural", age:P().age, years:0 }); log(`🚔 A Interpol rastreou ${d.name}: peça apreendida e ficha suja por receptação.`, "bad", ["crime"]); }
+  }
+  if (collection().length && chance(0.12)) enqueue("ev_collector_offer");
+}
+
+/* ---------- Arsenal ---------- */
+const hasWeapon = id => arsenal().some(w => w.id === id);
+function weaponBlock(d){
+  if (P().age < 18) return "Só maiores de idade";
+  if (inPrison()) return "Você está preso(a)";
+  if (d.legal === "license" && !S.flags.gunLicense) return "Exige porte de arma";
+  if (hasWeapon(d.id)) return "Você já tem";
+  return null;
+}
+function buyWeapon(id){
+  const d = byId(DATA.armory, id), why = weaponBlock(d); if (why) return R(false, why);
+  const price = priceOf(d.price) * (d.legal === "illegal" ? rfloat(1, 1.4) : 1);
+  if (!canAfford(price)) return R(false, `Custa ${fmt(price)}.`);
+  addMoney(-Math.round(price));
+  if (d.legal === "illegal"){ addNoto(4); if (chance(0.08)){ S.record.push({ crime:"porte ilegal de arma", age:P().age, years:0 }); sendToPrison(rint(1, 3), "porte ilegal de arma"); return R(false, "O vendedor era informante. Preso(a) em flagrante."); } }
+  arsenal().push({ uid:uid(), id, registered: d.legal === "license" });
+  log(`${d.emoji} Comprei: ${d.name}.`, d.legal === "illegal" ? "bad" : "");
+  return R(true, `${d.name} adquirida. Ela aparece como golpe nas brigas.`);
+}
+function discardWeapon(u){ const w = arsenal().find(x => x.uid === u); if (!w) return R(false, "?"); S.arsenal = S.arsenal.filter(x => x !== w); return R(true, `Me desfiz de: ${byId(DATA.armory, w.id).name}.`); }
+function applyGunLicense(){
+  const law = DATA.gunLaw[P().country] || { age:25, cost:2000, ok:0.3 };
+  if (S.flags.gunLicense) return R(false, "Você já tem porte.");
+  if (P().age < law.age) return R(false, `Idade mínima no país: ${law.age}.`);
+  if (S.record.length) return R(false, "Negado: antecedentes criminais.");
+  if (P().stress > 75 || S.illnesses.some(i => i.id === "depress" && i.diagnosed)) return R(false, "Negado no exame psicológico.");
+  const cost = priceOf(law.cost); if (!canAfford(cost)) return R(false, `Taxas e cursos: ${fmt(cost)}.`);
+  addMoney(-cost);
+  if (!chance(law.ok)) return R(false, `Pedido negado pela polícia (aprovação ~${Math.round(law.ok*100)}% em ${country().name}).`);
+  S.flags.gunLicense = true; log("🪪 Consegui porte de arma.", ""); return R(true, "Porte aprovado.");
+}
+/* Golpe de combate gerado a partir de uma arma do arsenal. */
+function weaponMoves(){
+  return arsenal().map(w => { const d = byId(DATA.armory, w.id); return d && { id:"w_" + d.id, weapon:d.id, name:`${d.emoji} ${d.name}`, dmg:d.dmg, acc:d.acc, ko:d.ko, lethal:d.lethal, cost:d.cost, type:"strike" }; }).filter(Boolean);
+}
+/* Na prisão (ou ao ser preso), armas ilegais pesam: +anos e apreensão. */
+function weaponsOnArrest(){
+  const ill = arsenal().filter(w => byId(DATA.armory, w.id).legal === "illegal");
+  S.arsenal = arsenal().filter(w => byId(DATA.armory, w.id).legal !== "illegal");
+  return ill.length;
+}
+</script>
+<script>/* src/systems/dark.js */
+"use strict";
+/* =====================================================================
+   systems/dark.js — O "LADO SOMBRIO" (arco de assassino em série).
+   Mecânica abstrata de jogo, sem instruções do mundo real.
+
+   Estado S.dark: active, code ("code" = só culpados | "none"), urge
+   (impulso 0–100), heat (suspeita policial 0–100), clues (pistas
+   acumuladas), stealth (perícia em não deixar rastros), kills, victims.
+   • Impulso sobe todo ano; alto demais → crise (estresse, felicidade,
+     evento pedindo decisão).
+   • Caçada em etapas (S.hunt): alvo → estudar a rotina (preparo) →
+     abordagem (arma do arsenal ou mãos nuas) → execução → limpeza.
+       sucesso = 0,35 + preparo/200 + discrição/250 + maestria/400
+                 + precisão da arma·0,2 − risco do alvo·0,15
+       pistas  = rastreabilidade da arma·2 + (1 − preparo/100) + acaso
+                 − limpeza;  suspeita += 6 + pistas·9 (+15 se havia motivo)
+                 − disfarce/6   (e a suspeita cai 5 + disfarce/8 por ano)
+   • DISFARCE: emprego, parceiro(a), filhos e vida estável escondem.
+   • Suspeita alta → colegas/família desconfiam, força-tarefa e, com
+     pistas suficientes, prisão perpétua/pena máxima.
+   ===================================================================== */
+const dark = () => (S.dark ||= { active:false, code:"code", urge:0, heat:0, clues:0, stealth:10, kills:0, victims:[], hunts:0 });
+function darkCover(){
+  const kids = children().filter(c => c.age < 18).length;
+  return clamp(20 + (S.job ? 25 : 0) + (partner() ? 15 : 0) + kids*5 + (S.edu.school ? 10 : 0) - (S.org ? 10 : 0) - P().notoriety/3 - (P().stress > 70 ? 10 : 0));
+}
+function awakenDark(code){
+  const D = dark(); if (D.active) return R(false, "Já desperto.");
+  if (P().age < 18) return R(false, "—");
+  D.active = true; D.code = code; D.urge = 35;
+  log(`🌑 Algo sombrio despertou em mim. ${code === "code" ? "Vou seguir um código: só quem merece." : "Sem regras."}`, "bad", ["crime"]);
+  remember("Escolhi alimentar o lado sombrio. Cada passo agora tem consequência.", "pending");
+  return R(true, code === "code" ? "O código está definido: só culpados." : "Sem código. Sem limites.");
+}
+function repressDark(){
+  const D = dark(); if (!D.active) return R(false, "—");
+  const cost = priceOf(2500); if (!canAfford(cost)) return R(false, `Terapia intensiva: ${fmt(cost)}.`);
+  if (!spendEnergy()) return R(false, "Sem energia este ano.");
+  addMoney(-cost); D.urge = clamp(D.urge - rint(15, 30)); addStress(-6);
+  return R(true, `Sessões intensas de terapia. Impulso ${Math.round(D.urge)}.`);
+}
+function normalLife(){
+  const D = dark(); if (!D.active) return R(false, "—");
+  if (!spendEnergy()) return R(false, "Sem energia este ano.");
+  D.heat = clamp(D.heat - rint(4, 9)); addStat("happiness", 2);
+  return R(true, `Churrasco com colegas, sorriso no rosto. Ninguém desconfia de nada. Suspeita ${Math.round(D.heat)}.`);
+}
+function destroyEvidence(){
+  const D = dark(); if (!D.active || !D.clues) return R(false, "Não há nada para destruir.");
+  if (!spendEnergy()) return R(false, "Sem energia este ano.");
+  if (chance(0.55 + D.stealth/250)){ D.clues = Math.max(0, D.clues - 1); D.stealth = clamp(D.stealth + 3); return R(true, `Uma pista a menos. Restam ${D.clues}.`); }
+  D.heat = clamp(D.heat + 8); return R(false, "Alguém me viu mexendo onde não devia. Suspeita subiu.");
+}
+
+/* ---------- Caçada ---------- */
+function huntCandidates(){
+  const D = dark(), pool = D.code === "code" ? DATA.darkTargets.filter(t => t.guilty).concat([pick(DATA.darkTargets.filter(t => !t.guilty))]) : DATA.darkTargets;
+  return [0,1,2].map(() => { const t = pick(pool), g = chance(0.8) ? "M" : "F", n = genName(country(), g); return { tid:t.id, first:n.first, last:n.last, gender:g, age:rint(22, 60) }; });
+}
+function huntBlock(){
+  const D = dark();
+  if (!D.active) return "Lado sombrio inativo";
+  if (inPrison()) return "Você está preso(a)";
+  if (D.lastHunt === P().age) return "Só uma caçada por ano";
+  if (S.activitiesThisYear >= ACT_LIMIT) return "Sem energia este ano";
+  return null;
+}
+function startHunt(target){
+  const why = huntBlock(); if (why) return R(false, why);
+  spendEnergy(); dark().lastHunt = P().age; dark().hunts++;
+  S.hunt = { t: target, prep: 0, studied: 0, weapon: null, step: "plan" };
+  return R(true, `Alvo escolhido: ${target.first} ${target.last}.`);
+}
+function huntStudy(){
+  const H = S.hunt; if (!H || H.step !== "plan") return "";
+  if (H.studied >= 2) return "Você já sabe tudo que dava para saber.";
+  if (!spendEnergy()){ return "Sem energia para observar mais."; }
+  H.studied++; H.prep = Math.min(100, H.prep + rint(25, 40));
+  return `Observei a rotina do alvo por semanas. Preparo ${H.prep}%.`;
+}
+function huntOdds(H = S.hunt){
+  const t = byId(DATA.darkTargets, H.t.tid), w = H.weapon ? byId(DATA.armory, H.weapon) : null, D = dark();
+  return clamp((0.35 + H.prep/200 + D.stealth/250 + bestMastery()/400 + (w ? w.acc*0.2 : 0.08) - t.risk*0.15) * 100, 5, 92) / 100;
+}
+function huntExecute(weaponId){
+  const H = S.hunt; if (!H) return "";
+  H.weapon = weaponId || null; H.step = "done";
+  const t = byId(DATA.darkTargets, H.t.tid), D = dark();
+  if (chance(huntOdds(H))){ H.success = true; H.step = "cleanup"; return `${H.t.first} ${H.t.last} não vai mais fazer mal a ninguém.`; }
+  // falhou: o alvo reage (combate) ou escapa
+  D.heat = clamp(D.heat + 15); D.clues++;
+  if (chance(0.6)){
+    startFight("hunt", { npc:{ first:H.t.first, last:H.t.last, age:H.t.age, gender:H.t.gender, personality:"hothead" }, target:H.t });
+    S.hunt = null; return "O alvo percebeu e reagiu!";
+  }
+  S.hunt = null; return `${H.t.first} escapou e viu meu rosto. A suspeita aumentou.`;
+}
+/* Limpeza: decide quantas pistas ficam. mode: meticulous | fast | frame */
+function huntCleanup(mode){
+  const H = S.hunt; if (!H || !H.success) return "";
+  S.hunt = null;
+  return darkKill(H.t, H.weapon, H.prep, mode);
+}
+function darkKill(target, weaponId, prep, mode = "fast"){
+  const D = dark(), t = byId(DATA.darkTargets, target.tid), w = weaponId ? byId(DATA.armory, weaponId) : { trace:0.1, discretion:0.6 };
+  let clues = Math.max(0, Math.round(w.trace*2 + (1 - prep/100) + rfloat(-0.6, 1.2)));
+  let msg = "";
+  if (mode === "meticulous"){ if (spendEnergy()){ clues = Math.max(0, clues - 2); D.stealth = clamp(D.stealth + 5); msg = " Limpei tudo com calma."; } else { msg = " Sem energia para limpar direito."; } }
+  else if (mode === "frame"){
+    if (chance(0.35 + P().stats.intelligence/300)){ D.heat = clamp(D.heat - 20); msg = " Plantei pistas que apontam para outra pessoa."; P().karma = clamp(P().karma - 10); }
+    else { clues += 2; msg = " A pista falsa foi mal plantada — e aponta para mim."; }
+  } else msg = " Saí rápido. Deve ter ficado algo para trás.";
+  D.clues += clues; D.kills++; D.stealth = clamp(D.stealth + 2);
+  S.stats.kills = num(S.stats.kills) + 1; martial().kills++;
+  D.heat = clamp(D.heat + 6 + clues*9 + (t.id === "rival" ? 15 : 0) - darkCover()/6);
+  D.victims.push({ name:`${target.first} ${target.last}`, type:t.name, age:P().age });
+  // psicologia: o código importa
+  if (t.guilty || D.code === "none"){ D.urge = clamp(D.urge - rint(45, 65)); addStress(-8); if (D.code === "none") P().karma = clamp(P().karma - 25); }
+  else { D.urge = clamp(D.urge - 30); addStat("happiness", -20); addStress(20); P().karma = clamp(P().karma - 30); remember(`Quebrei meu próprio código com ${target.first}. Não sou quem eu achava que era.`, "bad"); msg += " Quebrei meu código. Isso me consome."; }
+  log(`🌑 ${target.first} ${target.last} (${t.name.toLowerCase()}) desapareceu.`, "bad", ["crime"]);
+  if (D.kills >= 3) achieve("darkpassenger", "Passageiro sombrio");
+  if (D.heat >= 60) enqueue("ev_task_force");
+  return `Feito.${msg} Pistas deixadas: ${clues}. Suspeita policial: ${Math.round(D.heat)}.`;
+}
+/* Resultado de uma caçada que virou briga (combate kind "hunt"). */
+function huntFightAfter(F){
+  const D = dark();
+  F.ctx.target = F.ctx.target || { tid:"stranger", first:F.opp.first, last:F.opp.last, age:F.opp.age, gender:F.opp.gender }; // briga de caçada sem alvo planejado
+  if (F.oppOutcome === "death"){ F.summary += " " + darkKill(F.ctx.target, F.usedWeapon, 0, "fast"); return; }
+  D.heat = clamp(D.heat + (F.result === "win" ? 12 : 25)); D.clues++;
+  F.summary += F.result === "win" ? " O alvo sobreviveu e vai falar com a polícia." : " Fugi ferido(a). Deixei sangue e rastros.";
+}
+
+/* ---------- Tick anual ---------- */
+function darkYear(){
+  const D = S.dark; if (!D || !D.active || !P().alive) return;
+  if (inPrison()){ D.urge = clamp(D.urge + 5); return; }
+  D.urge = clamp(D.urge + rint(10, 18) * (D.code === "code" ? 0.85 : 1));
+  D.heat = clamp(D.heat - (5 + darkCover()/8));
+  if (D.urge >= 70){ addStress(10); addStat("happiness", -6); enqueue("ev_dark_urge"); }
+  if (D.heat >= 45 && chance(0.35)) enqueue("ev_dark_suspicion");
+  if (D.heat >= 85 && D.clues >= 3 && chance(0.25 + D.clues*0.06)){
+    log("🚨 A força-tarefa juntou as pistas. Fui preso(a) por assassinatos em série.", "bad", ["crime"]);
+    const pen = DATA.penal[P().country] || { max:40, life:false };
+    sendToPrison(pen.life ? 99 : pen.max, "assassinatos em série", "máxima");
+    D.heat = 30; D.caught = true; addFame(30); addNoto(50);
+  }
+}
+</script>
 <script>/* src/systems/activities.js */
 "use strict";
 /* systems/activities.js */
@@ -6819,6 +7622,10 @@ function lifeTitle(){
   else if (M.rec.w >= 10) opts.push([78, "Lenda do Ringue"]);
   if (num(M.kills) >= 3) opts.push([92, f ? "A Temida" : "O Temido"]);
   else if (num(M.kills) >= 1 && p.karma < 30) opts.push([72, "Mãos Sujas de Sangue"]);
+  const D = S.dark || {};
+  if (num(D.kills) >= 3) opts.push([99, D.caught ? "Serial Killer Capturado(a)" : D.code === "code" ? "O Justiceiro das Sombras" : "Assassino(a) em Série Nunca Descoberto(a)"]);
+  if (S.flags.exAthlete && num(S.jobHistory.length) && S.achievements.some(a => a.id === "sporttitle")) opts.push([84, "Lenda do Esporte"]);
+  if ((S.collection || []).length >= 6) opts.push([66, "Grande Colecionador(a)"]);
   if (num(S2.escapes) >= 1) opts.push([83, num(S2.escapes) >= 2 ? "Mestre(a) da Fuga" : "Fugitivo(a) Lendário(a)"]);
   if (Object.values(M.arts || {}).some(a => a.m >= 90)) opts.push([74, "Grão-Mestre(a) das Artes Marciais"]);
   if (nwB > 2e7) opts.push([90, f ? "Magnata" : "Magnata"]);
@@ -6967,8 +7774,8 @@ function ageUp(){
   economyYear(); // inflação, salários e fase do ciclo
   S.activitiesThisYear = 0; S.actCount = {};
 
-  agingYear(); schoolYear(); careerYear(); martialYear(); businessYear(); assetsYear();
-  financeYear(Y); orgYear(); relationshipsYear(); identityYear(); looksYear(); petsYear(); healthYear(); prisonYear(); fugitiveYear();
+  agingYear(); schoolYear(); careerYear(); sportsYear(); gigYear(); martialYear(); businessYear(); assetsYear(); collectYear();
+  financeYear(Y); orgYear(); relationshipsYear(); identityYear(); looksYear(); petsYear(); healthYear(); prisonYear(); fugitiveYear(); darkYear();
   consequencesYear(); milestoneYear();
   S.hist = S.hist || { happy:0, health:0, n:0 };
   S.hist.happy += P().stats.happiness; S.hist.health += P().stats.health; S.hist.n++;
@@ -7073,7 +7880,7 @@ function yearBadge(){
    (política de autoplay dos navegadores). Mudo/volume em SETTINGS.
    ===================================================================== */
 const Sound = (() => {
-  let ctx = null, master = null, noiseBuf = null, muted = false, unlocked = false;
+  let ctx = null, master = null, noiseBuf = null, muted = false, unlocked = false; const last = {};
   function ensure(){
     if (typeof window === "undefined") return null;
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
@@ -7127,12 +7934,31 @@ const Sound = (() => {
     stage:       () => arp([659, 880, 1175], 0.09, { d:0.25, type:"triangle", g:0.1 }),
     caught:      () => { for (let i=0;i<2;i++) tone({ f:880, f2:440, t:i*0.3, d:0.26, type:"square", g:0.06 }); noise({ d:0.4, f:150, g:0.3, q:0.5, t:0.6 }); },
     escape:      () => { noise({ d:0.8, f:300, f2:2400, g:0.05, q:0.5 }); arp([523, 659, 784, 1047, 1568], 0.1, { d:0.45, t:0.3, type:"triangle", g:0.11 }); },
+    // prisão: sirene policial "yelp" + batida metálica de grade
+    jail:        () => {
+      for (let i=0;i<4;i++){ tone({ f:700, f2:1500, t:i*0.32, d:0.16, type:"sawtooth", g:0.045 }); tone({ f:1500, f2:700, t:i*0.32+0.16, d:0.16, type:"sawtooth", g:0.045 }); }
+      [0, 0.09].forEach(t0 => { noise({ t:1.42+t0, d:0.25, f:2400, q:6, g:0.18 }); tone({ f:180, f2:120, t:1.42+t0, d:0.3, type:"square", g:0.06 }); tone({ f:1980, t:1.42+t0, d:0.6, type:"sine", g:0.03 }); });
+    },
+    // hospital: ambulância (dois tons alternados) + bipe de monitor cardíaco
+    hospital:    () => {
+      for (let i=0;i<4;i++){ tone({ f:960, t:i*0.5, d:0.24, type:"triangle", g:0.07 }); tone({ f:770, t:i*0.5+0.25, d:0.24, type:"triangle", g:0.07 }); }
+      for (let i=0;i<3;i++) tone({ f:1046, t:2.15 + i*0.62, d:0.09, type:"sine", g:0.06, a:0.003 });
+    },
+    beep:        () => tone({ f:1046, d:0.1, type:"sine", g:0.06 }),
+    // tela cheia
+    expand:      () => { noise({ d:0.25, f:600, f2:3000, g:0.05, q:0.7 }); arp([523, 784], 0.07, { d:0.18, type:"triangle", g:0.08, t:0.05 }); },
+    collapse:    () => { noise({ d:0.22, f:2600, f2:500, g:0.05, q:0.7 }); arp([784, 523], 0.07, { d:0.18, type:"triangle", g:0.08 }); },
     // carregamento
     tick:        () => tone({ f:1600, d:0.025, type:"sine", g:0.025 }),
     ready:       () => { [523, 659, 784].forEach((f,i) => tone({ f, t:i*0.04, d:0.9, a:0.02, type:"sine", g:0.06 })); tone({ f:1047, t:0.18, d:0.7, type:"triangle", g:0.05 }); },
   };
   return {
-    play(name){ if (muted || !SETTINGS.sound) return; try { if (!ensure()) return; SFX[name]?.(); } catch(e){} },
+    play(name){
+      if (muted || !SETTINGS.sound) return;
+      const now = Date.now(), gap = { jail:2600, hospital:3200, siren:1400 }[name] || 0; // sons longos não se empilham
+      if (gap && now - (last[name] || 0) < gap) return; last[name] = now;
+      try { if (!ensure()) return; SFX[name]?.(); } catch(e){}
+    },
     setVolume(v){ SETTINGS.volume = Math.max(0, Math.min(1, v)); saveSettings(); if (ctx) ensure(); },
     toggle(){ SETTINGS.sound = !SETTINGS.sound; saveSettings(); if (ctx) ensure(); if (SETTINGS.sound){ this.unlock(); this.play("click"); } return SETTINGS.sound; },
     mute(m){ muted = !!m; }, // usado pelo selftest
@@ -7171,6 +7997,8 @@ on("pickup",     () => Sound.play("pickup"));
 on("stage",      () => Sound.play("stage"));
 on("caught",     () => Sound.play("caught"));
 on("escape",     () => Sound.play("escape"));
+on("jail",       () => Sound.play("jail"));
+on("hospital",   () => Sound.play("hospital"));
 </script>
 <script>/* src/ui/device.js */
 "use strict";
@@ -7218,6 +8046,72 @@ const Device = (() => {
   return { guard, coarse, setAppHeight };
 })();
 </script>
+<script>/* src/ui/fullscreen.js */
+"use strict";
+/* =====================================================================
+   ui/fullscreen.js — TELA CHEIA (PC e celular) + MODO APP anti-rolagem.
+   • Fullscreen API nativa (requestFullscreen / webkitRequestFullscreen).
+   • Onde a API não existe (iPhone) ou é bloqueada (iframe/webview), entra
+     o MODO APP (pseudo tela cheia): a página inteira para de rolar; só o
+     conteúdo do jogo rola por dentro, sem "puxar para atualizar", sem
+     efeito elástico e sem zoom de pinça acidental.
+   • Instalado na tela inicial (display-mode: standalone) → modo app
+     automático.
+   • pageTop(): volta ao topo funcionando nos dois modos de rolagem.
+   ===================================================================== */
+const FS = (() => {
+  const d = document, root = d.documentElement;
+  let pseudo = false;
+  const nativeEl = () => d.fullscreenElement || d.webkitFullscreenElement || null;
+  const nativeOk = () => !!(root.requestFullscreen || root.webkitRequestFullscreen) && (d.fullscreenEnabled ?? d.webkitFullscreenEnabled ?? true);
+  const standalone = () => (typeof matchMedia === "function" && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+  const active = () => !!nativeEl() || pseudo;
+
+  function apply(){
+    const on = active() || standalone();
+    root.classList.toggle("app-mode", on);
+    root.classList.toggle("is-fullscreen", !!nativeEl());
+    for (const b of d.querySelectorAll("[data-fs-btn]")){
+      b.innerHTML = active() ? FS_ICON.exit : FS_ICON.enter;
+      b.setAttribute("aria-label", active() ? "Sair da tela cheia" : "Tela cheia");
+      b.setAttribute("aria-pressed", active() ? "true" : "false");
+      b.title = active() ? "Sair da tela cheia" : "Tela cheia";
+    }
+  }
+  async function enter(){
+    let ok = false;
+    if (nativeOk()){
+      try { await (root.requestFullscreen ? root.requestFullscreen({ navigationUI:"hide" }) : root.webkitRequestFullscreen()); ok = true; } catch(e){ ok = false; }
+    }
+    if (!ok){
+      pseudo = true;
+      toast(/iPhone|iPod/.test(navigator.userAgent) ? "Modo app ativado. Para tela cheia total no iPhone: Compartilhar → Adicionar à Tela de Início." : "Modo app ativado (o navegador bloqueou a tela cheia nativa).");
+    }
+    apply(); Sound.play("expand");
+  }
+  async function exit(){
+    try { if (nativeEl()) await (d.exitFullscreen ? d.exitFullscreen() : d.webkitExitFullscreen()); } catch(e){}
+    pseudo = false; apply(); Sound.play("collapse");
+  }
+  function toggle(){ return active() ? exit() : enter(); }
+  d.addEventListener("fullscreenchange", apply); d.addEventListener("webkitfullscreenchange", apply);
+  if (typeof matchMedia === "function"){ const mq = matchMedia("(display-mode: standalone)"); mq.addEventListener ? mq.addEventListener("change", apply) : mq.addListener?.(apply); }
+  // F11/ESC também passam por aqui: o "F" alterna (fora de campos de texto)
+  d.addEventListener("keydown", e => { if (e.key === "f" && !e.ctrlKey && !e.metaKey && !/input|textarea|select/i.test(e.target.tagName) && !d.querySelector("#modalRoot .escgrid")) toggle(); });
+  setTimeout(apply, 0);
+  return { toggle, enter, exit, active, apply };
+})();
+const FS_ICON = {
+  enter: `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>`,
+  exit:  `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>`,
+};
+const fsButton = (cls = "iconbtn") => `<button class="${cls} fsbtn" data-fs-btn onclick="FS.toggle()" aria-label="Tela cheia" title="Tela cheia">${FS.active() ? FS_ICON.exit : FS_ICON.enter}</button>`;
+/* Topo da página em qualquer modo (no modo app quem rola é o <body>). */
+function pageTop(smooth = false){
+  const opt = { top:0, behavior: smooth && !REDUCED() ? "smooth" : "auto" };
+  window.scrollTo(opt); if (document.body) document.body.scrollTo?.(opt);
+}
+</script>
 <script>/* src/ui/feedback.js */
 "use strict";
 /* =====================================================================
@@ -7229,7 +8123,7 @@ const Device = (() => {
    Barra de progresso + checklist de etapas + porcentagem + dicas que
    giram. `work` roda no meio (gerar vida, carregar save) e a tela some
    em fade com um acorde de "pronto". { long:true } = 4–6 s (abertura do
-   jogo e nova vida); padrão ≈1,5 s. Toque para pular. Em
+   jogo e nova vida); padrão ≈1,5 s. NÃO pode ser pulada. Em
    prefers-reduced-motion a tela aparece sem animações (CSS). */
 const BOOT_STEPS = ["Inicializando o motor de simulação…","Gerando árvore genealógica…","Sorteando país, cidade e família…","Calculando a economia global…","Carregando academias e submundo…","Treinando os guardas do presídio…","Afinando os efeitos sonoros…","Preparando seu destino…"];
 function showLoading(steps, work, done, opts = {}){
@@ -7243,7 +8137,7 @@ function showLoading(steps, work, done, opts = {}){
       <div class="ld-row"><div class="ld-step">${esc(steps[0])}</div><div class="ld-pct">0%</div></div>
       ${opts.long ? `<ol class="ld-list">${steps.map(t => `<li>${esc(t.replace(/…$/, ""))}</li>`).join("")}</ol>` : ""}
       <div class="ld-tip">💡 <b>Dica:</b> <span>${esc(tips[0])}</span></div>
-      <div class="ld-skip">toque para pular</div></div>`;
+      <div class="ld-skip">${opts.long ? "Preparando a simulação…" : ""}</div></div>`;
   el.classList.remove("out"); el.classList.add("on");
   const bar = el.querySelector(".ld-bar i"), stepEl = el.querySelector(".ld-step"), pctEl = el.querySelector(".ld-pct"), tipEl = el.querySelector(".ld-tip span"), items = el.querySelectorAll(".ld-list li");
   const total = opts.long ? 4300 + Math.random()*1400 : 1300 + Math.random()*500, t0 = performance.now(); // UI: não consome o RNG semeado
@@ -7256,7 +8150,7 @@ function showLoading(steps, work, done, opts = {}){
     el.classList.add("out");
     setTimeout(()=>{ el.classList.remove("on","out"); el.innerHTML = ""; done && done(); }, 320);
   };
-  el.onclick = finish;
+  el.onclick = null; // não pulável: roda até o fim da duração programada
   const tick = now => {
     if (finished) return;
     const k = Math.min(1, (now - t0)/total);
@@ -7338,7 +8232,7 @@ function hudSkeleton(){
         <div class="avatar" data-k="avatar"></div>
         <div class="idtext"><h1 data-k="name"></h1><div class="sub" data-k="sub"></div></div>
         <div class="money"><span data-k="money"></span><small data-k="nw"></small></div>
-        <button class="iconbtn" onclick="UI.menu()" aria-label="Menu">☰</button>
+        ${fsButton()}<button class="iconbtn" onclick="UI.menu()" aria-label="Menu">☰</button>
       </div>
       <div class="bars">${HUD_BARS.map(([k,l])=>`<div class="bar" data-bar="${k}"><div class="lbl"><span>${l}</span><b data-v></b></div><div class="track"><div class="fill"></div><i class="cap"></i></div><span class="delta"></span></div>`).join("")}</div>
       <div class="substats" data-k="substats"></div>
@@ -7406,6 +8300,7 @@ function occupation(){
   if (S.edu.school){ const m = byId(DATA.majors,S.edu.major) || byId(DATA.techCourses,S.edu.major); return `🎒 ${schoolName()}${m && !["fund","medio","supl"].includes(S.edu.school) ? " — " + esc(m.name) : ""}`; }
   if (S.retired) return "🏖️ Aposentado(a)";
   if (S.partTime) return `🧃 ${byId(DATA.partTime,S.partTime).name}`;
+  if (S.gig) return `${gigDef(S.gig.id).emoji} ${gigDef(S.gig.id).name} (autônomo)`;
   return p.age < 6 ? "🧸 Curtindo a infância" : "🔎 Sem ocupação";
 }
 function viewLife(){
@@ -7534,6 +8429,7 @@ function viewCareer(){
   if (a >= 14 && !S.job && !inPrison()){
     h += `<div class="card"><h2>🧃 Meio período</h2>${DATA.partTime.map(j=>`<div class="row"><div class="grow"><div class="t">${j.name}</div><div class="s">${fmt(wageOf(j.s))}/ano · ${j.minAge}+ anos</div></div><button class="btn" ${a<j.minAge||S.partTime===j.id?"disabled":""} onclick="UI.do(()=>applyPartTime('${j.id}'))">Candidatar</button></div>`).join("")}</div>`;
   }
+  h += athleteCard() + gigCard();
   if (a >= 18 && !inPrison()){
     // vagas: elegíveis primeiro, com chance explicada; indisponíveis recolhidas com o motivo
     const elig = DATA.careers.filter(c => !jobEligibility(c)), not = DATA.careers.filter(c => jobEligibility(c));
@@ -7634,6 +8530,7 @@ function viewAssets(){
   // emigração
   h += `<div class="card"><h2>✈️ Emigrar</h2><div class="oddsline" style="margin-bottom:8px">Seus imóveis, veículos e negócios FICAM onde estão e continuam rendendo (gestão remota). Caixa e investimentos são convertidos pelo câmbio. EUA, Japão e Alemanha exigem visto.</div>
     <div class="chips">${DATA.countries.filter(c=>c.id!==P().country).map(c=>{ const v = visaCheck(c); return `<button class="btn sm" ${v?`title="${esc(v)}"`:""} onclick="UI.confirm('Mudar para ${c.name}? Custo ${fmt(emigrateCost(c))}. ${v?esc(v):"Visto OK."}', ()=>UI.do(()=>emigrate('${c.id}')))">${flag(c.id)}${c.name}${v?" 🛂":""}</button>`; }).join("")}</div></div>`;
+  h += collectionCard();
   return h;
 }
 </script>
@@ -7741,6 +8638,9 @@ const PLACES = [
   { id:"airport",  ic:"✈️", name:"Aeroporto",           acts:["vacation"], ui:[["Emigrar para outro país","UI.close();UI.tab('assets')"]], minAge:18 },
   { id:"mall",     ic:"🛍️", name:"Shopping",            acts:["shopping","social","hobby"], minAge:10 },
   { id:"ngo",      ic:"🙌", name:"ONG / Comunidade",    acts:["volunteer","networking"] },
+  { id:"auction",  ic:"🔨", name:"Leilões e antiquários", ui:[["🏺 Comprar peças de museu e relíquias","UI.close();UI.collectShop()"],["Ver minha coleção","UI.close();UI.tab('assets')"]], minAge:18 },
+  { id:"guns",     ic:"🔫", name:"Loja de armas",       ui:[["Armas autorizadas e porte","UI.close();UI.armory(false)"]], minAge:18 },
+  { id:"stadium",  ic:"🏟️", name:"Estádio / Clube",     ui:[["Carreiras no esporte","UI.close();UI.tab('career')"],["🥋 Academia de lutas","UI.close();UI.martial()"]], minAge:8 },
 ];
 function viewActs(){
   const a = P().age, energy = ACT_LIMIT - S.activitiesThisYear;
@@ -7766,6 +8666,7 @@ function crimeCard(energy){
     h += O ? `<div class="row click" onclick="UI.org()"><div class="grow"><div class="t">🕶️ ${esc(O.name)} · ${DATA.orgRanks[O.rank].name}</div><div class="s">respeito ${Math.round(O.respect)} · calor ${Math.round(O.heat)}${isBoss()?` · ${O.members.length} capangas · ${O.ops.length} operações`:""} · sujo ${fmt(S.dirty)}</div></div><button class="btn sm">Gerenciar</button></div>`
       : `<div class="row"><div class="grow"><div class="t">Organização criminosa</div><div class="s">Funde a sua (habilidade 30 ou notoriedade 35, ${fmt(priceOf(20000))}) ou aguarde um convite.</div></div><button class="btn sm" onclick="UI.do(()=>foundOrg())">👑 Fundar</button></div>`;
   }
+  if (a >= 18) h += `<div class="row"><div class="grow"><div class="t">🕳️ Mercado paralelo de armas</div><div class="s">Sem registro, sem perguntas, sem volta.</div></div><button class="btn sm" onclick="UI.armory(true)">Entrar</button></div>` + darkPanel();
   h += `<div class="oddsline" style="margin:6px 0 10px">Crimes graves rendem dinheiro SUJO (precisa lavar). Antecedentes fecham concursos e derrubam reputação.</div>`;
   const cats = [...new Set(DATA.crimes.map(c=>c.cat))];
   for (const cat of cats){
@@ -7802,7 +8703,7 @@ function viewDeath(){
     ${[["💵 Total ganho", fmt(st.earned, true)],["💸 Total gasto", fmt(st.spent, true)],["💼 Empregos exercidos", S.jobHistory.length],["📨 Candidaturas", st.jobs],
        ["🏠 Imóveis comprados", st.propsBought],["🚗 Veículos comprados", st.carsBought],["🌎 Países onde morou", st.countries.length],["🦹 Crimes tentados", `${st.crimes} (${st.crimesOk} ok)`],
        ["⛓️ Prisões", st.arrests],["🥊 Brigas / lutas", `${num(st.fights)} (${num(st.fightsWon)} vitórias)`],["🏆 Cartel oficial", `${S.martial?.rec.w||0}V–${S.martial?.rec.l||0}D · ${S.martial?.titles.length||0} título(s)`],
-       ["☠️ Mortes causadas", num(st.kills)],["🏃 Fugas da prisão", num(st.escapes)],["🥋 Maior graduação", bestArt() ? `${rankName(bestArt())} (${byId(DATA.martialArts,bestArt()).name})` : "—"],["🧺 Dinheiro lavado", fmt(st.laundered, true)],["⭐ Fama final", Math.round(p.fame)],["🏆 Conquistas", S.achievements.length]]
+       ["☠️ Mortes causadas", num(st.kills)],["🏃 Fugas da prisão", num(st.escapes)],["🏺 Peças na coleção", (S.collection||[]).length],["🧰 Último autônomo", S.gig ? gigDef(S.gig.id).name : "—"],["🥋 Maior graduação", bestArt() ? `${rankName(bestArt())} (${byId(DATA.martialArts,bestArt()).name})` : "—"],["🧺 Dinheiro lavado", fmt(st.laundered, true)],["⭐ Fama final", Math.round(p.fame)],["🏆 Conquistas", S.achievements.length]]
        .map(([k,v])=>`<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("")}</div></div>`;
   const ch = lifeChapters();
   if (ch.length) h += `<div class="card"><h2>📖 Linha do tempo ilustrada</h2><div class="chapters">${ch.map(c=>`<div class="chapter" data-ic="${c.ic}"><h4>${c.name} <span class="muted s">${c.range} anos</span></h4>${c.items.map(e=>`<div class="ev">${e.age}a · ${esc(e.text)}</div>`).join("")}</div>`).join("")}</div></div>`;
@@ -7878,7 +8779,7 @@ function showResult(res, before){
 /* ui/controller.js */
 
 const UI = {
-  tab(k){ if (k !== TAB) TAB_CHANGED = true; TAB = k; try{ localStorage.setItem("claudilife.tab", k); }catch(e){} render(); window.scrollTo({ top:0, behavior: REDUCED() ? "auto" : "smooth" }); },
+  tab(k){ if (k !== TAB) TAB_CHANGED = true; TAB = k; try{ localStorage.setItem("claudilife.tab", k); }catch(e){} render(); pageTop(true); },
   logFilter(k){ LOGFILTER = k; render(); }, logAll(){ LOGALL = true; render(); },
   /* busca: re-renderiza só a lista (mantém o foco no campo) */
   logSearch(v){ LOGQUERY = v.trim(); clearTimeout(UI._ls); UI._ls = setTimeout(()=>{ const el = $("#logbody"); if (el) el.innerHTML = renderLog(); }, 120); },
@@ -7892,7 +8793,7 @@ const UI = {
     ageUp(); LOGALL = false;
     saveGame(true); render();
     Sound.play("year"); floatDiff(before, takeSnapshot());
-    if (!P().alive){ closeModal(); window.scrollTo(0,0); toast(`${P().first} faleceu aos ${P().age} anos.`); return; }
+    if (!P().alive){ closeModal(); pageTop(); toast(`${P().first} faleceu aos ${P().age} anos.`); return; }
     yearBadge();
     if (S.queue.length) setTimeout(showEvent, REDUCED() ? 0 : 380); // deixa o selo do ano aparecer antes
   },
@@ -7916,7 +8817,7 @@ const UI = {
     if (r && r.msg) toast(say(r.msg));
     if (r && r.ok === false){ const v = $("#view"); restartClass(v, "shake"); Sound.play("error"); }
     else floatDiff(before, takeSnapshot());
-    if (!P().alive) window.scrollTo(0,0);
+    if (!P().alive) pageTop();
   },
   confirm(msg, yes){ modal(`<h3>Confirmar</h3><p>${esc(msg)}</p><div class="choices"><button class="primary" onclick="UI._yes()">Sim</button><button onclick="UI.close()">Cancelar</button></div>`); UI._yes = ()=>{ closeModal(); yes(); }; },
   uniDialog(){
@@ -7986,12 +8887,14 @@ const UI = {
     UI._cands = c; render();
     modal(`<h3>💘 Pretendentes</h3><div class="choices">${c.map((p,i)=>`<button onclick="UI.close();UI.do(()=>dateCandidate(UI._cands[${i}]))">${esc(p.first)} ${esc(p.last)}, ${p.age}<small>${p.gender==="F"?"Mulher":"Homem"} · aparência ${p.looks}/100${p.job?" · "+esc(p.job):""}</small></button>`).join("")}<button onclick="UI.close()">Ninguém me agradou</button></div>`);
   },
-  heir(u){ showLoading(["Lendo o testamento…","Dividindo a herança…","Uma nova geração começa…"], () => { continueAsHeir(u); HUD_PREV = null; saveGame(true); TAB = "life"; render(); }, () => { window.scrollTo(0,0); toast("Uma nova geração começa."); }); },
+  heir(u){ showLoading(["Lendo o testamento…","Dividindo a herança…","Uma nova geração começa…"], () => { continueAsHeir(u); HUD_PREV = null; saveGame(true); TAB = "life"; render(); }, () => { pageTop(); toast("Uma nova geração começa."); }); },
   menu(){
     modal(`<h3>☰ Menu</h3><div class="choices">
       <button onclick="saveGame();UI.close()">💾 Salvar agora</button>
       <button onclick="exportSave()">⬇️ Exportar save (JSON)</button>
       <button onclick="document.getElementById('imp').click()">⬆️ Importar save</button>
+      <button onclick="FS.toggle();UI.close()">${FS.active() ? "🗗 Sair da tela cheia" : "⛶ Tela cheia"}<small>no celular sem suporte nativo: modo app sem rolagem acidental</small></button>
+      <button onclick="UI.close();UI.guide()">📖 Guia rápido</button>
       <button onclick="saveGame(true);showHub('home')">🏠 Menu principal<small>vidas salvas, hall dos legados, nova vida</small></button>
       <button onclick="UI.beauty('style')">💇 Aparência e visão</button>
       <button onclick="UI.theme()">🌓 Alternar tema</button>
@@ -8007,7 +8910,7 @@ const UI = {
     closeModal(); if (!CUR_SLOT || (S && !o.heir)) startNewSlot(); // cada vida nova ganha seu slot
     showLoading(BOOT_STEPS,
       () => { newLife(o); HUD_PREV = null; TAB = "life"; LOGALL = false; LOGQUERY = ""; MARKET_COUNTRY = null; saveGame(true); render(); },
-      () => window.scrollTo(0,0), { long:true });
+      () => { pageTop(); UI.tutorial(); }, { long:true }); // tutorial logo após o carregamento da nova vida
   },
   toggleSound(){ Sound.toggle(); UI.menu(); },
   toggleLang(){ SETTINGS.lang = SETTINGS.lang === "forte" ? "leve" : "forte"; saveSettings(); render(); UI.menu(); },
@@ -8309,7 +9212,7 @@ const hubBack = () => `<button class="hub-back" onclick="showHub('home')" aria-l
 const HUB_VIEWS = {
   home(){
     const slots = listSlots(), cur = slots.find(s => s.id === (CUR_SLOT || lsGet(CUR_SLOT_KEY))) || slots[0], hall = readHall();
-    return `<div class="hub-logo"><span class="ld-mark">🧬</span><b>Claudi<span>Life</span></b></div><div class="ld-sub">Simulador de vida</div>
+    return `<div class="hub-top">${fsButton("hub-back")}</div><div class="hub-logo"><span class="ld-mark">🧬</span><b>Claudi<span>Life</span></b></div><div class="ld-sub">Simulador de vida</div>
       ${cur ? `<button class="hub-continue" onclick="hubPlay('${cur.id}')"><span class="hc-av">${cur.alive ? avatarFor(cur.age, cur.gender, cur.tone) : "🪦"}</span>
         <span class="hc-txt"><b>${cur.alive ? "▶ Continuar" : "📜 Ver legado"}</b><small>${esc(cur.name)} · ${cur.age} anos · ${flagOf(cur.country)} ${cur.gen > 1 ? `· ${cur.gen}ª geração` : ""}</small></span></button>` : ""}
       <div class="hub-grid">
@@ -8319,6 +9222,7 @@ const HUB_VIEWS = {
         <button class="hub-tile" onclick="showHub('hall')"><span>🏛️</span><b>Hall dos legados</b><small>${hall.lives.length} vida(s) · ${Object.keys(hall.ach).length} conquista(s)</small></button>
         <button class="hub-tile" onclick="showHub('settings')"><span>⚙️</span><b>Ajustes</b><small>som, tema, linguagem</small></button>
         <button class="hub-tile" onclick="document.getElementById('hubimp').click()"><span>⬆️</span><b>Importar</b><small>arquivo .json</small></button>
+        <button class="hub-tile" onclick="UI.guide()"><span>📖</span><b>Guia rápido</b><small>como jogar em 5 passos</small></button>
       </div>
       <input type="file" id="hubimp" accept="application/json,.json" hidden onchange="importSave(this.files[0], ok=>{ toast(ok?'Save importado em um slot novo!':'Arquivo inválido.'); if (ok){ hideHub(); render(); } })">
       <div class="hub-foot">💡 ${esc(pick(DATA.tips))}</div>`;
@@ -8393,7 +9297,7 @@ function hubRandom(){
 }
 function hubPlay(id){
   if (!loadGame(id)){ toast("Não foi possível abrir esse save."); return; }
-  hideHub(); HUD_PREV = null; TAB = "life"; render(); window.scrollTo(0,0);
+  hideHub(); HUD_PREV = null; TAB = "life"; render(); pageTop();
   if (!P().alive) return;
   if (S.fight) UI.fightOpen(); else if (S.escape) UI.escapeOpen(); else if (S.queue.length) showEvent();
 }
@@ -8510,6 +9414,167 @@ Object.assign(UI, {
   },
 });
 </script>
+<script>/* src/ui/extras.js */
+"use strict";
+/* =====================================================================
+   ui/extras.js — telas de trabalho autônomo, vida de atleta, coleção,
+   arsenal e lado sombrio (caçada em etapas).
+   ===================================================================== */
+function gigCard(){
+  const a = P().age; if (a < 12 || inPrison()) return "";
+  const G = S.gig;
+  let h = `<div class="card"><h2>🧰 Trabalho autônomo <span class="tag">${S.job ? "como bico, além do emprego" : "renda por conta própria"}</span></h2>`;
+  if (G){
+    const d = gigDef(G.id);
+    h += `<div class="row"><div class="grow"><div class="t">${d.emoji} ${d.name}</div><div class="s">${G.years} ano(s) · renda estimada <b>${fmt(gigIncome())}/ano</b>${d.audience ? ` · ${G.audience.toLocaleString("pt-BR")} ${d.adult ? "assinantes" : "clientes/seguidores"}` : ""} · avaliação ${Math.round(G.rating)}</div>
+      ${bar("Habilidade", G.skill, "var(--accent)")}${d.adult ? bar("⚠️ Exposição", G.exposure, "var(--bad)") : ""}</div></div>
+      <div class="row"><span class="s">Ritmo:</span>${DATA.gigPace.map(p => `<button class="btn ${G.pace === p.id ? "primary" : ""}" ${S.job && p.id === 2 ? "disabled" : ""} onclick="UI.do(()=>setGigPace(${p.id}))">${p.name}</button>`).join("")}</div>
+      <div class="row">${d.audience ? `<button class="btn" onclick="UI.do(promoteGig)">📣 Divulgar</button>` : ""}<button class="btn" onclick="UI.do(practiceGig)">📈 Aperfeiçoar</button><button class="btn danger" onclick="UI.confirm('Parar de trabalhar como ${esc(d.name)}?', ()=>UI.do(()=>stopGig()))">Parar</button></div>
+      ${d.adult ? `<div class="oddsline">Exposição alta = chance de vazar para família, parceiro(a) e emprego. ${G.id === "escort" ? `Lei local: <b>${DATA.escortLaw[P().country] || "tolerada"}</b>.` : ""}</div>` : ""}`;
+  }
+  const cats = [...new Set(DATA.gigs.map(g => g.cat))];
+  h += `<details ${G ? "" : "open"}><summary class="t" style="cursor:pointer;margin-top:8px">${G ? "Trocar de atividade" : "Escolher atividade"}</summary>`;
+  for (const cat of cats){
+    const list = DATA.gigs.filter(g => g.cat === cat && (!g.adult || a >= 18)); if (!list.length) continue;
+    h += label(cat) + list.map(g => { const why = gigBlock(g), est = !why ? gigIncome({ id:g.id, years:0, skill:15 + P().stats.intelligence/10, audience: g.audience ? 10 : 0, pace: S.job ? 0 : 1, exposure:0, rating:70 }) : 0;
+      return `<div class="row"><div class="grow"><div class="t">${g.emoji} ${g.name}</div><div class="s">${esc(g.desc)}${est ? ` · começa ~${fmt(est, true)}/ano` : ""}</div></div>
+        <button class="btn sm ${why ? "" : "primary"}" ${why ? "disabled" : ""} onclick="${g.adult ? `UI.confirm('${esc(g.name)}: conteúdo/atividade adulta, com risco de exposição, estigma${g.danger ? ", ISTs, violência e polícia" : ""}. Continuar?', ()=>UI.do(()=>startGig('${g.id}')))` : `UI.do(()=>startGig('${g.id}'))`}">${why ? esc(why) : "Começar"}</button></div>`; }).join("");
+  }
+  return h + `</details></div>`;
+}
+function athleteCard(){
+  if (!isAthlete()) return "";
+  const J = S.job, c = career();
+  return `<div class="card hero"><h2>🏟️ Vida de atleta <span class="tag">${esc(J.club || "—")}</span></h2>
+    ${bar("Forma", athleteForm(), "var(--good)")}
+    <div class="s">Contrato: ${J.contract ?? "?"} ano(s) restante(s) · salário ×${num(J.contractMult, 1).toFixed(2)} · títulos ${num(J.titles)}${J.injured ? " · <b class='bad'>lesionado(a)</b>" : ""} · aposentadoria típica aos ${retireAge(c)}</div>
+    <div class="row"><button class="btn primary" onclick="UI.do(extraTraining)">🏋️ Treino extra</button><span class="s">+desempenho, risco de lesão</span></div></div>`;
+}
+function collectionCard(){
+  if (P().age < 18) return "";
+  const C = collection();
+  return `<div class="card"><h2>🏺 Coleção <span class="tag">${C.length} peça(s) · ${fmt(collectionTotal(), true)}</span></h2>
+    ${C.length ? C.map(c => { const d = byId(DATA.collectibles, c.id), gain = c.value - c.paid;
+      return `<div class="row"><div class="grow"><div class="t">${d.emoji} ${d.name}${c.hot ? ' <span class="tag bad">sem procedência</span>' : ""}</div>
+        <div class="s">${d.cat} · ${fmtAsset(c.value, c.country)} <span class="${gain >= 0 ? "good" : "bad"}">(${gain >= 0 ? "+" : "−"}${fmt(Math.abs(gain), true)})</span>${c.insured ? " · 🛡️ segurada" : ""}</div></div>
+        <div class="art-btns"><button class="btn sm" onclick="UI.do(()=>insureCollectible('${c.uid}'))">${c.insured ? "Cancelar seguro" : "🛡️ Segurar"}</button><button class="btn sm" onclick="UI.do(()=>lendToMuseum('${c.uid}'))">🏛️ Emprestar a museu</button><button class="btn sm" onclick="UI.confirm('Vender ${esc(d.name)}?', ()=>UI.do(()=>sellCollectible('${c.uid}')))">Vender</button></div></div>`; }).join("") : `<div class="empty">Nenhuma peça. Visite a casa de leilões.</div>`}
+    <div class="choices" style="margin-top:8px"><button onclick="UI.collectShop()">🔨 Leilões, antiquários e mercado negro</button></div></div>`;
+}
+function darkPanel(){
+  const D = S.dark; if (!D || !D.active) return P().age >= 18 ? `<div class="row"><div class="grow"><div class="t">🌑 Lado sombrio</div><div class="s">Um caminho sem volta: caçar alvos, esconder pistas, viver uma vida dupla.</div></div><button class="btn sm danger" onclick="UI.darkIntro()">Despertar</button></div>` : "";
+  const why = huntBlock();
+  return `${label(`🌑 Lado sombrio · ${D.code === "code" ? "com código" : "sem código"} · ${D.kills} vítima(s)`)}
+    <div class="bars">${bar("Impulso", D.urge, "var(--accent-2)")}${bar("Suspeita policial", D.heat, "var(--bad)")}${bar("Disfarce", darkCover(), "var(--good)")}${bar("Discrição", D.stealth, "var(--info)")}</div>
+    <div class="oddsline">Pistas acumuladas: <b>${D.clues}</b>. Com suspeita acima de 85 e pistas, a força-tarefa fecha o cerco.</div>
+    <div class="grid2" style="margin-top:8px">
+      <button class="action" ${why ? "disabled" : ""} onclick="UI.hunt()"><b>🎯 Caçar</b><span>${why ? esc(why) : "escolher alvo e planejar"}</span></button>
+      <button class="action" onclick="UI.do(destroyEvidence)" ${D.clues ? "" : "disabled"}><b>🧹 Sumir com pistas</b><span>energia · pode dar errado</span></button>
+      <button class="action" onclick="UI.do(normalLife)"><b>🎭 Vida normal</b><span>−suspeita</span></button>
+      <button class="action" onclick="UI.do(repressDark)"><b>🧠 Terapia</b><span>−impulso · ${fmt(priceOf(2500), true)}</span></button></div>`;
+}
+function armoryRow(d, black){
+  const why = weaponBlock(d);
+  return `<div class="row"><div class="grow"><div class="t">${d.emoji} ${d.name} ${d.legal === "illegal" ? '<span class="tag bad">ilegal</span>' : d.legal === "license" ? '<span class="tag">exige porte</span>' : ""}</div>
+    <div class="s">${fmt(priceOf(d.price))}${black ? "+" : ""} · letalidade ${Math.round(d.lethal*100)} · discrição ${Math.round(d.discretion*100)} · rastreável ${Math.round(d.trace*100)}%</div></div>
+    <button class="btn sm" ${why ? "disabled" : ""} onclick="UI.close();UI.do(()=>buyWeapon('${d.id}'))">${why ? esc(why) : "Comprar"}</button></div>`;
+}
+
+Object.assign(UI, {
+  collectShop(){
+    const row = d => `<button class="action" onclick="UI.close();UI.confirm('Comprar ${esc(d.name)}?${d.src === "black" ? " Procedência duvidosa: pode ser falso ou apreendido." : ""}', ()=>UI.do(()=>buyCollectible('${d.id}')))"><b>${d.emoji} ${d.name}</b><span>${d.cat} · ~${fmt(priceOf(d.price), true)} · valoriza ~${Math.round(d.appr*100)}%/ano</span></button>`;
+    modal(`<div class="emoji">🔨</div><h3>Leilões e antiquários</h3><p class="muted">Leilão cobra 12% de comissão; antiquário, 5%. O mercado negro sai pela metade — e pode ser falso ou roubado.</p>
+      ${Object.entries(DATA.collectSrc).map(([k, l]) => `${label(l)}<div class="grid2">${DATA.collectibles.filter(d => d.src === k).map(row).join("")}</div>`).join("")}
+      <div class="choices" style="margin-top:10px"><button onclick="UI.close()">Fechar</button></div>`);
+  },
+  armory(black){
+    const law = DATA.gunLaw[P().country] || { age:25 };
+    modal(`<div class="emoji">${black ? "🕳️" : "🔫"}</div><h3>${black ? "Mercado paralelo" : "Loja de armas autorizada"}</h3>
+      <p class="muted">${black ? "Sem registro e sem perguntas. Se for pego(a) com isso, a pena aumenta." : `Armas de fogo exigem porte (idade ${law.age}+, ficha limpa, exame psicológico). Seu porte: <b>${S.flags.gunLicense ? "aprovado" : "não tem"}</b>.`}</p>
+      ${!black && !S.flags.gunLicense ? `<div class="choices"><button onclick="UI.close();UI.do(applyGunLicense)">🪪 Solicitar porte de arma<small>${fmt(priceOf(law.cost || 2000))} · aprovação ~${Math.round((law.ok || 0.3)*100)}% em ${country().name}</small></button></div>` : ""}
+      ${DATA.armory.filter(d => black ? d.legal === "illegal" : d.legal !== "illegal").map(d => armoryRow(d, black)).join("")}
+      ${arsenal().length ? `${label("Meu arsenal")}${arsenal().map(w => { const d = byId(DATA.armory, w.id); return `<div class="row"><div class="grow s">${d.emoji} ${d.name}${w.registered ? " · registrada em seu nome" : ""}</div><button class="btn sm" onclick="UI.close();UI.do(()=>discardWeapon('${w.uid}'))">Descartar</button></div>`; }).join("")}` : ""}
+      <div class="choices" style="margin-top:10px"><button onclick="UI.close()">Fechar</button></div>`);
+  },
+  darkIntro(){
+    modal(`<div class="emoji">🌑</div><h3>O lado sombrio</h3><p>Você passará a ter <b>impulso</b> (cresce todo ano), <b>suspeita policial</b> e <b>pistas</b>. Uma vida "normal" (emprego, família) é o seu disfarce. Se a força-tarefa juntar provas: pena máxima.</p>
+      <div class="choices"><button class="danger" onclick="UI.close();UI.do(()=>awakenDark('code'))">⚖️ Com código: só quem escapou da justiça</button>
+      <button class="danger" onclick="UI.close();UI.do(()=>awakenDark('none'))">🩸 Sem código</button><button onclick="UI.close()">Não. Melhor não.</button></div>`);
+  },
+  hunt(){
+    const why = huntBlock(); if (why){ toast(why); return; }
+    UI._targets = huntCandidates();
+    modal(`<div class="emoji">🎯</div><h3>Escolher o alvo</h3><p class="muted">Código: <b>${dark().code === "code" ? "só culpados" : "nenhum"}</b>. Alvos com motivo pessoal chamam atenção da polícia.</p>
+      <div class="choices">${UI._targets.map((t, i) => { const d = byId(DATA.darkTargets, t.tid); return `<button onclick="UI.do(()=>startHunt(UI._targets[${i}]));UI.huntPlan()">${esc(t.first)} ${esc(t.last)}, ${t.age} — ${esc(d.name)}<small>${esc(d.desc)} · risco ${d.risk >= 1.1 ? "alto" : d.risk >= 0.85 ? "médio" : "baixo"}${dark().code === "code" && !d.guilty ? " · <b class='bad'>viola seu código</b>" : ""}</small></button>`; }).join("")}
+      <button onclick="UI.close()">Desistir</button></div>`, { locked:true });
+  },
+  huntPlan(msg = ""){
+    const H = S.hunt; if (!H){ closeModal(); return; }
+    const opts = [{ id:null, name:"🤜 Mãos nuas (artes marciais)", acc:0.4, discretion:0.6, trace:0.1 }, ...arsenal().map(w => byId(DATA.armory, w.id))];
+    modal(`<div class="emoji">🗺️</div><h3>Planejamento: ${esc(H.t.first)} ${esc(H.t.last)}</h3>
+      ${msg ? `<div class="result">${esc(msg)}</div>` : ""}
+      ${bar("Preparo", H.prep, "var(--accent)")}
+      <div class="choices" style="margin-top:8px"><button ${H.studied >= 2 || S.activitiesThisYear >= ACT_LIMIT ? "disabled" : ""} onclick="UI.huntPlan(huntStudy())">👁️ Estudar a rotina do alvo<small>energia · +preparo (máx. 2 vezes)</small></button></div>
+      ${label("Abordagem (escolha para executar)")}
+      <div class="choices">${opts.map(o => { H.weapon = o.id; const p = huntOdds(H); H.weapon = null; return `<button class="danger" onclick="UI.huntGo(${o.id ? `'${o.id}'` : "null"})">${o.name}<small>sucesso ~${Math.round(p*100)}% · discrição ${Math.round(o.discretion*100)} · rastreável ${Math.round(o.trace*100)}%</small></button>`; }).join("")}
+      <button onclick="S.hunt=null;UI.close();toast('Você recuou. Talvez outro dia.')">↩️ Recuar</button></div>`, { locked:true });
+  },
+  huntGo(w){
+    const msg = huntExecute(w);
+    if (S.fight){ UI._mgBefore = takeSnapshot(); return UI.fightOpen(); }
+    if (!S.hunt || !S.hunt.success){ saveGame(true); render(); modal(`<div class="emoji">💨</div><h3>Deu errado</h3><div class="result">${esc(msg)}</div><div class="choices"><button class="primary" onclick="UI.close()">Continuar</button></div>`); return; }
+    modal(`<div class="emoji">🌑</div><h3>Feito</h3><div class="result">${esc(msg)}</div>${label("E agora?")}
+      <div class="choices"><button onclick="UI.huntEnd('meticulous')">🧹 Limpar tudo com calma<small>energia · −2 pistas</small></button>
+      <button onclick="UI.huntEnd('fast')">🏃 Sair rápido<small>deixa mais rastros</small></button>
+      <button onclick="UI.huntEnd('frame')">🧩 Plantar pistas falsas<small>inteligência · pode virar contra você</small></button></div>`, { locked:true });
+  },
+  huntEnd(mode){ const m = huntCleanup(mode); saveGame(true); render(); modal(`<div class="emoji">🌘</div><div class="result">${esc(m)}</div><div class="choices"><button class="primary" onclick="UI.close()">Voltar à vida normal</button></div>`); },
+});
+/* Evento "O impulso" pode pedir para abrir a caçada ao continuar. */
+{ const _next = UI.next; UI.next = function(){ if (S && S.flags.openHunt){ delete S.flags.openHunt; if (!validHead()) return UI.hunt(); } return _next.apply(this, arguments); }; }
+</script>
+<script>/* src/ui/tutorial.js */
+"use strict";
+/* =====================================================================
+   ui/tutorial.js — TUTORIAL resumido, logo após o carregamento de uma
+   nova vida. Travado (não fecha tocando fora nem com Esc): o jogador
+   passa pelos 5 cartões. Depois da 1ª vez, pode marcar "não mostrar nas
+   próximas vidas". Revisável a qualquer hora: menu ☰ → Guia rápido, ou
+   o hub.
+   ===================================================================== */
+const TUTORIAL = [
+  { ic:"⏩", t:"Avance o tempo", b:"Cada toque em <b>Envelhecer 1 ano</b> simula um ano inteiro: salário, contas, saúde, relações e eventos. Não há volta — pense antes." },
+  { ic:"📊", t:"Atributos e dinheiro", b:"<b>Saúde, felicidade, inteligência e aparência</b> ficam no topo. Estresse alto adoece; dívida derruba o crédito. Veja o caixa do ano na aba <b>Vida</b> e o patrimônio em <b>Bens</b>." },
+  { ic:"💬", t:"Decisões e abordagens", b:"Eventos e pessoas que se aproximam sempre pedem uma escolha: <b>aceitar, recusar, negociar, investigar ou ignorar</b>. Investigar gasta energia e revela quem a pessoa é." },
+  { ic:"💼", t:"Trabalhe e invista", b:"Na aba <b>Carreira</b>: estudo, emprego, entrevistas e trabalho autônomo. Em <b>Bens</b>: imóveis, investimentos, coleção. Em <b>Ações</b>: os lugares da cidade (6 de energia por ano)." },
+  { ic:"⚠️", t:"Consequências e riscos", b:"Escolhas voltam anos depois (aba <b>Vida → Consequências</b>). Crime, brigas e golpes dão dinheiro rápido, mas trazem polícia, inimigos e prisão. Boa vida!" },
+];
+const tutorialSkipped = () => { try { return localStorage.getItem("claudilife.tutorialOff") === "1"; } catch(e){ return false; } };
+const tutorialSeen = () => { try { return localStorage.getItem("claudilife.tutorialSeen") === "1"; } catch(e){ return false; } };
+
+Object.assign(UI, {
+  /* Obrigatório no início de cada vida (exceto se desativado depois da 1ª vez). */
+  tutorial(){ if (!S || NO_PERSIST && !/tutorial/.test(location.search) || tutorialSkipped()) return; UI._tut = { i:0, mandatory:true }; UI.tutStep(); },
+  /* Guia rápido: mesma sequência, pode fechar. */
+  guide(){ UI._tut = { i:0, mandatory:false }; UI.tutStep(); },
+  tutStep(){
+    const T = UI._tut, s = TUTORIAL[T.i], last = T.i === TUTORIAL.length - 1;
+    modal(`<div class="tut">
+      <div class="tut-dots" aria-hidden="true">${TUTORIAL.map((_, k) => `<i class="${k === T.i ? "on" : k < T.i ? "done" : ""}"></i>`).join("")}</div>
+      <div class="emoji">${s.ic}</div><h3>${s.t}</h3><p>${s.b}</p>
+      <div class="oddsline">Passo ${T.i + 1} de ${TUTORIAL.length}${T.mandatory ? " · tutorial inicial" : " · guia rápido"}</div>
+      ${last && T.mandatory && tutorialSeen() ? `<label class="tut-off"><input type="checkbox" id="tutoff"> Não mostrar nas próximas vidas</label>` : ""}
+      <div class="choices tut-nav">${T.i ? `<button onclick="UI._tut.i--;UI.tutStep()">← Voltar</button>` : ""}
+        <button class="primary" onclick="${last ? "UI.tutDone()" : "UI._tut.i++;UI.tutStep()"}">${last ? (T.mandatory ? "🎮 Começar a viver!" : "Fechar guia") : "Próximo →"}</button></div></div>`, { locked: T.mandatory });
+    Sound.play("bubble");
+  },
+  tutDone(){
+    const off = document.getElementById("tutoff");
+    try { localStorage.setItem("claudilife.tutorialSeen", "1"); if (off && off.checked) localStorage.setItem("claudilife.tutorialOff", "1"); } catch(e){}
+    closeModal(); Sound.play("ready");
+    if (S && S.queue.length && P().alive) setTimeout(showEvent, 250);
+  },
+});
+</script>
 <!-- 8. ferramentas e boot -->
 <script>/* src/dev/selftest.js */
 "use strict";
@@ -8527,6 +9592,11 @@ function selfTest(lives=60){
   const randomAction = () => {
     const a = P().age, roll = rand();
     try {
+      if (!inPrison() && a >= 12 && rand() < 0.05){ const k = rand(); if (k < 0.4) startGig(pick(DATA.gigs).id); else if (S.gig){ k < 0.6 ? promoteGig() : k < 0.8 ? practiceGig() : setGigPace(rint(0,2)); } }
+      if (!inPrison() && a >= 18 && rand() < 0.03){ const k = rand(); if (k < 0.4) buyCollectible(pick(DATA.collectibles).id); else if (k < 0.55 && collection().length) sellCollectible(pick(collection()).uid); else if (k < 0.65 && collection().length) insureCollectible(pick(collection()).uid); else if (k < 0.85) buyWeapon(pick(DATA.armory).id); else applyGunLicense(); }
+      if (!inPrison() && a >= 18 && !dark().active && rand() < 0.004) awakenDark(chance(0.6) ? "code" : "none");
+      if (dark().active && rand() < 0.35) autoHunt();
+      if (isAthlete() && rand() < 0.3) extraTraining();
       if (inPrison() && roll < 0.25) startEscape();
       else if (inPrison() && roll < 0.8){ const k = pick(["yard","work","course","course","visit","appeal"]); k === "appeal" ? appealSentence() : prisonAct(k, pick(DATA.prisonCourses).id); }
       else if (a >= 8 && rand() < 0.05){ const k = rand(); if (k < 0.35) adoptPet(0); else if (k < 0.55) buyPet(pick(DATA.petSpecies.filter(s=>s.src==="shop")).id); else if (k < 0.65 && a >= 18) buyPet(pick(DATA.petSpecies.filter(s=>s.src==="exotic")).id); else if ((S.pets||[]).length) petAct(pick(S.pets).uid, pick(["play","play","feed","train","vet","giveaway"])); }
@@ -8600,6 +9670,8 @@ function selfTest(lives=60){
     res.petsOwned = (res.petsOwned||0) + num(S.stats.petsOwned); res.petAttacks = (res.petAttacks||0) + S.log.filter(e=>/atacou|atacado/.test(e.text)).length;
     res.cyberOk = (res.cyberOk||0) + num(S.stats.cyberOk); res.remitted = (res.remitted||0) + num(S.stats.remitted); res.spouseScams = (res.spouseScams||0) + num(S.stats.spouseScams);
     res.myopia = (res.myopia||0) + (look().myopia ? 1 : 0); res.visionTests = (res.visionTests||0) + (look().visionTested ? 1 : 0);
+    res.gigs = (res.gigs||0) + (S.gig ? 1 : 0); res.collectors = (res.collectors||0) + (collection().length ? 1 : 0); res.armed = (res.armed||0) + (arsenal().length ? 1 : 0);
+    res.darkKills = (res.darkKills||0) + num(S.dark?.kills); res.darkCaught = (res.darkCaught||0) + (S.dark?.caught ? 1 : 0); res.exAthletes = (res.exAthletes||0) + (S.flags.exAthlete ? 1 : 0);
     res.titles = (res.titles||0) + martial().titles.length; res.blackbelts = (res.blackbelts||0) + (bestMastery() >= 70 ? 1 : 0); res.wanted = (res.wanted||0) + (S.wanted ? 1 : 0);
     if (S.record.length) res.prison++;
     if (S.final && S.final.netWorth > wageOf(1e6)) res.rich++;
@@ -8861,6 +9933,71 @@ function layoutAudit(){
   out.OK = Object.values(out.telas).every(t => !t.rolagemHorizontal && !t.estouros.length) && !out.camposZoom.length && !out.alvosPequenos.length;
   return out;
 }
+
+/* Bot de caçada (selftest): percorre as etapas como a UI. */
+function autoHunt(){
+  if (huntBlock()) return;
+  startHunt(pick(huntCandidates()));
+  if (chance(0.6)) huntStudy();
+  const w = arsenal().length && chance(0.5) ? pick(arsenal()).id : null;
+  huntExecute(w);
+  if (S.fight) autoFight();
+  else if (S.hunt && S.hunt.success) huntCleanup(pick(["meticulous","fast","frame"]));
+  S.hunt = null;
+}
+/* Autônomo: renda de 1º ano por atividade e riscos do trabalho adulto. */
+function gigTest(){
+  const out = { rendaInicial:{} };
+  for (const g of DATA.gigs){
+    S = null; newLife({ seed: 9100, country:"BR", cls:4 }); P().age = 26; P().stats.looks = 70; P().stats.intelligence = 70; P().stats.health = 80; S.edu.level = 4; S.flags.license = true; S.vehicles.push({ uid:uid(), id:DATA.vehicles[0].id, value:1000, country:"BR" });
+    const r = startGig(g.id); if (!r.ok){ out.rendaInicial[g.id] = "bloqueado: " + r.msg; continue; }
+    S.yearSummary = { income:0, taxes:0, expenses:0, lines:[] }; gigYear(); out.rendaInicial[g.id] = fmt(S.gig.lastIncome, true);
+  }
+  let exposed = 0, ist = 0;
+  for (let i=0;i<40;i++){
+    S = null; newLife({ seed: 9200+i }); P().age = 22; P().stats.looks = 80; startGig(i % 2 ? "adult" : "escort"); setGigPace(2);
+    for (let y=0;y<8 && P().alive;y++){ S.yearSummary = { income:0, taxes:0, expenses:0, lines:[] }; gigYear(); }
+    if (S.queue.some(q => q.id === "ev_adult_exposed")) exposed++; if (S.illnesses.some(x => x.id === "ist")) ist++;
+  }
+  out.exposicaoEm8Anos = `${exposed}/40`; out.istAcompanhante = `${ist}/20`;
+  out.OK = DATA.gigs.every(g => typeof out.rendaInicial[g.id] === "string") && exposed > 5 && ist > 0;
+  return out;
+}
+/* Esporte: carreira de futebol dos 18 aos 40 — contratos, títulos, aposentadoria. */
+function sportsTest(n = 20){
+  let retired = 0, titles = 0, contracts = 0, coaches = 0, injuries = 0;
+  for (let i=0;i<n;i++){
+    S = null; newLife({ seed: 9300+i }); P().age = 18; P().talents.sport = 80; P().stats.health = 90;
+    hireDirect("football", 0);
+    for (let y=0;y<24 && P().alive;y++){
+      ageUp();
+      while (validHead()){ const q = S.queue[0]; const n2 = EVENT_MAP[q.id].choices(q.ctx).length; resolveEvent(q.id === "ev_sport_retire" ? Math.min(1, n2-1) : q.id === "ev_sport_contract" ? n2 > 2 ? 1 : 0 : 0); if (S.fight) autoFight(); if (S.escape) autoEscape(); }
+      if (S.log.some(e => /Transferência|Renovei/.test(e.text) && e.age === P().age)) contracts++;
+    }
+    if (S.flags.exAthlete) retired++; if (S.job?.careerId === "coach" || S.jobHistory.some(j => /Técnico|Auxiliar técnico/.test(j.title))) coaches++;
+    titles += S.log.filter(e => /campeão\(ã\) com o/.test(e.text)).length; injuries += S.log.filter(e => /Lesão/.test(e.text)).length;
+  }
+  const out = { carreiras:n, aposentados:retired, viraramTecnico:coaches, assinaturasDeContrato:contracts, titulos:titles, lesoes:injuries };
+  out.OK = retired >= n*0.6 && contracts > n && titles > 0 && injuries > 0;
+  return out;
+}
+/* Lado sombrio: suspeita cresce com pistas, disfarce reduz, força-tarefa pode prender. */
+function darkTest(n = 40){
+  const run = withCover => {
+    let heat = 0, caught = 0, kills = 0;
+    for (let i=0;i<n;i++){
+      S = null; newLife({ seed: 9400+i }); P().age = 25; awakenDark("code");
+      if (withCover){ hireDirect("cashier", 0); const r = makePartner(); r.role = "spouse"; S.rels.push(r); }
+      for (let y=0;y<10 && P().alive && !inPrison();y++){ S.activitiesThisYear = 0; autoHunt(); ageUp(); while (validHead()){ resolveEvent(0); if (S.fight) autoFight(); if (S.escape) autoEscape(); } }
+      heat += dark().heat; kills += dark().kills; if (dark().caught || S.record.some(r => /série/.test(r.crime))) caught++;
+    }
+    return { suspeitaMedia: Math.round(heat/n), vitimasMedia: (kills/n).toFixed(1), presos: `${caught}/${n}`, presosN: caught, suspeitaPorVitima: +(heat/Math.max(1, kills)).toFixed(1) };
+  };
+  const out = { comDisfarce: run(true), semDisfarce: run(false) };
+  // disfarce = menos prisões e menos suspeita por vítima (quem é preso para de caçar, então a média bruta engana)
+  out.OK = out.comDisfarce.presosN < out.semDisfarce.presosN && out.comDisfarce.suspeitaPorVitima < out.semDisfarce.suspeitaPorVitima && parseFloat(out.comDisfarce.vitimasMedia) > 0;
+  return out;
+}
 </script>
 <script>/* src/main.js */
 "use strict";
@@ -8872,16 +10009,17 @@ function layoutAudit(){
   if (/selftest/.test(location.search)){
     Sound.mute(true);
     const r = selfTest(60); r.emigration = emigrationTest(); r.heir = heirTest(); r.combat = combatTest(); r.escape = escapeTest();
-    r.v7 = { identity: identityTest().OK, prison: prisonTest().OK, pets: petTest(120).OK, classes: classTest(600).OK, bonds: bondsTest().OK }; S = null;
+    r.v7 = { identity: identityTest().OK, prison: prisonTest().OK, pets: petTest(120).OK, classes: classTest(600).OK, bonds: bondsTest().OK, gigs: gigTest().OK, sports: sportsTest().OK, dark: darkTest(30).OK }; S = null;
     document.body.innerHTML = `<pre id="selftest" style="white-space:pre-wrap;padding:16px;font:13px monospace">${esc(JSON.stringify({ ...r, ages: r.ages.join(","), scores: undefined, errors: r.errors.slice(0,15), bad: r.bad.slice(0,10), errorCount:r.errors.length, badCount:r.bad.length }, null, 1))}</pre>`;
     document.title = "SELFTEST " + (r.errors.length||r.bad.length||r.invariants||!r.emigration.OK||!r.heir.OK||!r.combat.OK||!r.escape.OK||Object.values(r.v7).some(x=>!x) ? "FAIL" : "OK");
-    document.body.insertAdjacentHTML("afterbegin", `<h1 id="verdict" style="font:700 22px monospace;padding:12px 16px;margin:0">${document.title} · v7 ${esc(JSON.stringify(r.v7))} · invariantes ${r.invariants||0}</h1>`);
+    document.body.insertAdjacentHTML("afterbegin", `<h1 id="verdict" style="font:700 22px monospace;padding:12px 16px;margin:0">${document.title} · v7 ${esc(JSON.stringify(r.v7))} · emig ${r.emigration.OK} · herdeiro ${r.heir.OK} · combate ${r.combat.OK} · fuga ${r.escape.OK} · invariantes ${r.invariants||0}</h1>`);
     return;
   }
   const unit = location.search.match(/unit=(\w+)/); // dev: ?unit=combatTest | escapeTest | emigrationTest | heirTest
   if (unit && /Test$/.test(unit[1]) && typeof window[unit[1]] === "function"){
     Sound.mute(true); const t0 = performance.now(); const r = window[unit[1]](); r.ms = Math.round(performance.now() - t0); S = null;
     document.body.innerHTML = `<pre style="white-space:pre-wrap;padding:12px;font:12px monospace">${esc(JSON.stringify(r, null, 1))}</pre>`;
+    document.body.insertAdjacentHTML("afterbegin", `<h1 style="font:700 18px monospace;padding:10px 12px;margin:0">${unit[1]} ${r.OK ? "OK" : "FAIL"}${r.erro ? " · " + esc(r.erro) : ""}</h1>`);
     document.title = unit[1] + (r.OK ? " OK" : " FAIL"); return;
   }
   if (/audit/.test(location.search)){ // dev: ?audit — estouros de largura e alvos de toque
@@ -8929,6 +10067,11 @@ function layoutAudit(){
       if (k === "beauty"){ look().visionTested = true; look().myopia = true; setFrame("modern"); render(); UI.beauty("eyes"); }
       if (["hub","create","slots","hall"].includes(k)) showHub(k === "hub" ? "home" : k);
       if (k === "pick"){ showHub("create"); hubPick("country"); }
+      if (k === "gig"){ startGig("streamer"); S.gig.audience = 3400; TAB = "career"; render(); }
+      if (k === "dark"){ S.money += priceOf(1e5); buyWeapon("tactical"); awakenDark("code"); dark().urge = 64; dark().heat = 38; dark().clues = 2; TAB = "acts"; render(); }
+      if (k === "hunt"){ awakenDark("code"); UI.hunt(); }
+      if (k === "tut"){ UI._tut = { i:2, mandatory:true }; UI.tutStep(); }
+      if (k === "collect"){ S.money += priceOf(2e6); buyCollectible("fossil"); buyCollectible("watch"); buyCollectible("idol"); TAB = "assets"; render(); }
     }
     const es = location.search.match(/escape=(\d+)/); // ?demo=25&escape=4&moves=2
     if (es){ sendToPrison(6, "demonstração"); S.prison.security = ["mínima","média","máxima"][Math.min(2, Math.floor(+es[1]/2))]; S.prison.escAttempts = +es[1] % 2; startEscape();

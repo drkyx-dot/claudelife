@@ -21,11 +21,12 @@ function rankName(artId){ const a = byId(DATA.martialArts, artId); return a.rank
 
 /* Golpes conhecidos: básicos + desbloqueados por maestria. */
 function knownMoves({ tournamentArt } = {}){
-  return DATA.moves.filter(mv => {
+  const weapons = tournamentArt || typeof weaponMoves !== "function" ? [] : weaponMoves(); // armas não entram no ringue
+  return weapons.concat(DATA.moves.filter(mv => {
     if (!mv.art) return !(tournamentArt && mv.dirty);
     if (tournamentArt && tournamentArt !== "mma" && mv.art !== tournamentArt) return false;
     return mastery(mv.art) >= mv.req;
-  });
+  }));
 }
 function nextUnlock(artId){ return DATA.moves.filter(mv => mv.art === artId && mv.req > mastery(artId)).sort((a,b)=>a.req-b.req)[0] || null; }
 

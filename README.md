@@ -1,4 +1,4 @@
-# ClaudiLife — Simulador de Vida (v7)
+# ClaudiLife — Simulador de Vida (v8)
 
 - **Jogar / desenvolver:** abra `index.html`. O jogo abre no **hub** (menu principal): continuar, vidas salvas (até 6 slots), Hall dos Legados, ajustes e criador de personagem. Ele carrega os módulos de `src/` direto do disco, sem servidor e sem build.
 - **Arquivo único para distribuir:** rode `python3 tools/build.py`. O resultado é `dist/claudilife.html`, com todos os módulos embutidos.
@@ -108,6 +108,16 @@ EVENTS.push({ id:"ev_meu", emoji:"🎲", title:"Título", age:[18,60],
 **Mudar o formato do save.** Aumente `SAVE_VERSION` e preencha os novos campos em `ensureState()`. A migração roda automaticamente.
 
 **Depois de qualquer mudança:** abra `?selftest` e `?balance`, e então rode `python3 tools/build.py`.
+
+## v8: tela cheia, trabalho autônomo, esporte, coleção, armas e lado sombrio
+- **Tela cheia (`ui/fullscreen.js`):** usa a Fullscreen API nativa (inclusive o prefixo do Safari) com fallback para o "modo app" (`html.app-mode`). Nesse modo quem rola é o `<body>`, com overscroll travado: sem puxar para atualizar e sem zoom de pinça. Botão no cabeçalho, no hub e no menu; a tecla **F** também alterna.
+- **Trabalho autônomo (`systems/gigs.js`):** 11 atividades, incluindo duas adultas (18+) tratadas sem conteúdo explícito. A renda depende de atributos, habilidade, público e ritmo. O trabalho adulto tem riscos próprios: exposição, IST, cliente violento e polícia.
+- **Esporte (`systems/sports.js`):** contratos, transferências, lesões, títulos e aposentadoria, com transição para técnico(a), comentarista ou olheiro(a). Há 7 carreiras esportivas novas.
+- **Coleção e armas (`systems/collect.js`):** 15 peças de museu (leilão, antiquário ou mercado negro) e 10 armas. As armas viram golpes no combate, exigem porte, deixam rastros e somam pena quando são ilegais.
+- **Lado sombrio (`systems/dark.js`):** impulso, suspeita, pistas e disfarce, com caçada em etapas. É uma mecânica abstrata, sem instruções reais.
+- **Sons:** `jail` (sirene e grade) e `hospital` (ambulância e bipe), com limite contra sobreposição.
+- **Carregamento e tutorial:** o carregamento não pode ser pulado. Depois de cada vida nova vem o tutorial de 5 passos (`ui/tutorial.js`); o guia fica no menu e no hub.
+- **Testes:** `?unit=gigTest`, `?unit=sportsTest` e `?unit=darkTest`. Demos: `?demo=18&ui=gig|dark|hunt|tut|collect`.
 
 ## Celular, tablet e desktop
 - **`src/styles/mobile.css`** (carregado por último):

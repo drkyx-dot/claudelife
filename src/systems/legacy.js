@@ -84,6 +84,10 @@ function lifeTitle(){
   else if (M.rec.w >= 10) opts.push([78, "Lenda do Ringue"]);
   if (num(M.kills) >= 3) opts.push([92, f ? "A Temida" : "O Temido"]);
   else if (num(M.kills) >= 1 && p.karma < 30) opts.push([72, "Mãos Sujas de Sangue"]);
+  const D = S.dark || {};
+  if (num(D.kills) >= 3) opts.push([99, D.caught ? "Serial Killer Capturado(a)" : D.code === "code" ? "O Justiceiro das Sombras" : "Assassino(a) em Série Nunca Descoberto(a)"]);
+  if (S.flags.exAthlete && num(S.jobHistory.length) && S.achievements.some(a => a.id === "sporttitle")) opts.push([84, "Lenda do Esporte"]);
+  if ((S.collection || []).length >= 6) opts.push([66, "Grande Colecionador(a)"]);
   if (num(S2.escapes) >= 1) opts.push([83, num(S2.escapes) >= 2 ? "Mestre(a) da Fuga" : "Fugitivo(a) Lendário(a)"]);
   if (Object.values(M.arts || {}).some(a => a.m >= 90)) opts.push([74, "Grão-Mestre(a) das Artes Marciais"]);
   if (nwB > 2e7) opts.push([90, f ? "Magnata" : "Magnata"]);

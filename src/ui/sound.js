@@ -7,7 +7,7 @@
    (política de autoplay dos navegadores). Mudo/volume em SETTINGS.
    ===================================================================== */
 const Sound = (() => {
-  let ctx = null, master = null, noiseBuf = null, muted = false, unlocked = false;
+  let ctx = null, master = null, noiseBuf = null, muted = false, unlocked = false; const last = {};
   function ensure(){
     if (typeof window === "undefined") return null;
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
@@ -61,12 +61,31 @@ const Sound = (() => {
     stage:       () => arp([659, 880, 1175], 0.09, { d:0.25, type:"triangle", g:0.1 }),
     caught:      () => { for (let i=0;i<2;i++) tone({ f:880, f2:440, t:i*0.3, d:0.26, type:"square", g:0.06 }); noise({ d:0.4, f:150, g:0.3, q:0.5, t:0.6 }); },
     escape:      () => { noise({ d:0.8, f:300, f2:2400, g:0.05, q:0.5 }); arp([523, 659, 784, 1047, 1568], 0.1, { d:0.45, t:0.3, type:"triangle", g:0.11 }); },
+    // prisão: sirene policial "yelp" + batida metálica de grade
+    jail:        () => {
+      for (let i=0;i<4;i++){ tone({ f:700, f2:1500, t:i*0.32, d:0.16, type:"sawtooth", g:0.045 }); tone({ f:1500, f2:700, t:i*0.32+0.16, d:0.16, type:"sawtooth", g:0.045 }); }
+      [0, 0.09].forEach(t0 => { noise({ t:1.42+t0, d:0.25, f:2400, q:6, g:0.18 }); tone({ f:180, f2:120, t:1.42+t0, d:0.3, type:"square", g:0.06 }); tone({ f:1980, t:1.42+t0, d:0.6, type:"sine", g:0.03 }); });
+    },
+    // hospital: ambulância (dois tons alternados) + bipe de monitor cardíaco
+    hospital:    () => {
+      for (let i=0;i<4;i++){ tone({ f:960, t:i*0.5, d:0.24, type:"triangle", g:0.07 }); tone({ f:770, t:i*0.5+0.25, d:0.24, type:"triangle", g:0.07 }); }
+      for (let i=0;i<3;i++) tone({ f:1046, t:2.15 + i*0.62, d:0.09, type:"sine", g:0.06, a:0.003 });
+    },
+    beep:        () => tone({ f:1046, d:0.1, type:"sine", g:0.06 }),
+    // tela cheia
+    expand:      () => { noise({ d:0.25, f:600, f2:3000, g:0.05, q:0.7 }); arp([523, 784], 0.07, { d:0.18, type:"triangle", g:0.08, t:0.05 }); },
+    collapse:    () => { noise({ d:0.22, f:2600, f2:500, g:0.05, q:0.7 }); arp([784, 523], 0.07, { d:0.18, type:"triangle", g:0.08 }); },
     // carregamento
     tick:        () => tone({ f:1600, d:0.025, type:"sine", g:0.025 }),
     ready:       () => { [523, 659, 784].forEach((f,i) => tone({ f, t:i*0.04, d:0.9, a:0.02, type:"sine", g:0.06 })); tone({ f:1047, t:0.18, d:0.7, type:"triangle", g:0.05 }); },
   };
   return {
-    play(name){ if (muted || !SETTINGS.sound) return; try { if (!ensure()) return; SFX[name]?.(); } catch(e){} },
+    play(name){
+      if (muted || !SETTINGS.sound) return;
+      const now = Date.now(), gap = { jail:2600, hospital:3200, siren:1400 }[name] || 0; // sons longos não se empilham
+      if (gap && now - (last[name] || 0) < gap) return; last[name] = now;
+      try { if (!ensure()) return; SFX[name]?.(); } catch(e){}
+    },
     setVolume(v){ SETTINGS.volume = Math.max(0, Math.min(1, v)); saveSettings(); if (ctx) ensure(); },
     toggle(){ SETTINGS.sound = !SETTINGS.sound; saveSettings(); if (ctx) ensure(); if (SETTINGS.sound){ this.unlock(); this.play("click"); } return SETTINGS.sound; },
     mute(m){ muted = !!m; }, // usado pelo selftest
@@ -105,3 +124,5 @@ on("pickup",     () => Sound.play("pickup"));
 on("stage",      () => Sound.play("stage"));
 on("caught",     () => Sound.play("caught"));
 on("escape",     () => Sound.play("escape"));
+on("jail",       () => Sound.play("jail"));
+on("hospital",   () => Sound.play("hospital"));

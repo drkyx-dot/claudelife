@@ -39,8 +39,10 @@ function careerYear(){
     log(`Fui promovido(a) a ${c.levels[J.level].t}! 📈`, "good"); addStat("happiness",8); emit("promotion");
     if (J.level === c.levels.length-1) achieve("top_"+c.id, `Topo da carreira: ${c.levels[J.level].t}`);
   }
-  J.salary = salaryFor(c, J.level, J.levelYears);
+  J.salary = Math.round(salaryFor(c, J.level, J.levelYears) * num(J.contractMult, 1)); // contratos esportivos multiplicam
   if (c.fame) addFame(J.level * 3 + rfloat(-2,3));
+  // atletas: contrato, lesão, títulos e aposentadoria ficam em systems/sports.js
+  if (c.athlete){ if (J.perf < 25 && J.contract > 1 && chance(0.35)){ J.contract = 1; J.contractMult = Math.max(0.5, num(J.contractMult, 1) * 0.8); log(`📉 O ${J.club || "clube"} me deixou no banco e cortou meu salário; o contrato não deve ser renovado.`, "bad"); } return; }
   // demissão (mancha a reputação)
   if (J.perf < 28 && chance(0.4)){
     log(`Fui demitido(a) do cargo de ${c.levels[J.level].t} por baixo desempenho. 📦`, "bad");

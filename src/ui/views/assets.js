@@ -82,5 +82,6 @@ function viewAssets(){
   // emigração
   h += `<div class="card"><h2>✈️ Emigrar</h2><div class="oddsline" style="margin-bottom:8px">Seus imóveis, veículos e negócios FICAM onde estão e continuam rendendo (gestão remota). Caixa e investimentos são convertidos pelo câmbio. EUA, Japão e Alemanha exigem visto.</div>
     <div class="chips">${DATA.countries.filter(c=>c.id!==P().country).map(c=>{ const v = visaCheck(c); return `<button class="btn sm" ${v?`title="${esc(v)}"`:""} onclick="UI.confirm('Mudar para ${c.name}? Custo ${fmt(emigrateCost(c))}. ${v?esc(v):"Visto OK."}', ()=>UI.do(()=>emigrate('${c.id}')))">${flag(c.id)}${c.name}${v?" 🛂":""}</button>`; }).join("")}</div></div>`;
+  h += collectionCard();
   return h;
 }

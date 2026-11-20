@@ -23,6 +23,8 @@ function sendToPrison(years, crime, security){
   if (S.wanted){ years += num(S.wanted.remaining) + 2; crime += " + fuga anterior"; security = "máxima"; S.wanted = null; }
   years = Math.min(99, years);
   if (S.fight) S.fight.next = null; // torneio não continua atrás das grades
+  const illegalGuns = typeof weaponsOnArrest === "function" ? weaponsOnArrest() : 0;
+  if (illegalGuns){ years = Math.min(99, years + illegalGuns*2); crime += " + porte ilegal de arma"; }
   endJob("Preso"); S.partTime = null;
   if (S.edu.school && S.edu.school !== "fund" && S.edu.school !== "medio"){ log("Fui expulso(a) do curso.", "bad"); S.edu.school = null; }
   security = security || (years >= 12 ? "máxima" : years >= 5 ? "média" : "mínima");
@@ -30,7 +32,7 @@ function sendToPrison(years, crime, security){
   // dinheiro sujo é apreendido; organização perde força sem você
   if (S.dirty > 0){ log(`A polícia apreendeu ${fmt(S.dirty)} em dinheiro sujo.`, "bad"); S.dirty = 0; }
   if (S.org){ S.org.heat = clamp(S.org.heat - 20); if (!isBoss()) S.org.respect = clamp(S.org.respect + 8); }
-  emit("siren");
+  emit("jail");
   S.rental = null;
   log(`Fui condenado(a) a ${years >= 99 ? "PRISÃO PERPÉTUA" : years + " ano(s) de prisão"} por ${crime} (segurança ${security}). ⛓️`, "bad");
   addStat("happiness",-20); addNoto(15); addRep(-20); addStress(15); S.flags.caregiver = false;

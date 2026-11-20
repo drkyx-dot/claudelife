@@ -131,7 +131,8 @@ function fightAction(act){
     L.push(`☠️ Tentei acabar com ${o.first}, mas errei — e abri a guarda.`); stunned = true;
   }
   else {
-    const mv = byId(DATA.moves, act); if (!mv) return;
+    const mv = byId(DATA.moves, act) || weaponMoves().find(m => m.id === act); if (!mv) return;
+    if (mv.weapon) F.usedWeapon = mv.weapon; // perícia: arma registrada em seu nome pesa
     F.me.sta = Math.max(0, F.me.sta - mv.cost);
     if (chance(moveHit(mv))){
       const crit = chance(0.06 + moveMastery(mv)/100*0.12 + mv.ko*0.4);
@@ -192,7 +193,7 @@ function endFight(result){
   if (F.myOutcome === "death") S.flags.forcedDeath = F.kind === "tournament" ? "lesão cerebral em uma luta oficial" : `ferimentos em uma briga com ${name}`;
   F.summary = s + (F.summary ? " " + F.summary : "");
   (FIGHT_AFTER[F.kind] || (()=>{}))(F);
-  if (F.oppOutcome === "death") registerKill(F);
+  if (F.oppOutcome === "death" && F.kind !== "hunt") registerKill(F); // caçadas usam o modelo de suspeita do lado sombrio
   else if (["grave","coma"].includes(F.oppOutcome) && F.kind !== "tournament") assaultCharge(F);
   if (F.kind !== "tournament") log(`🥊 ${F.summary}`, F.result === "win" && F.oppOutcome !== "death" ? "" : "bad");
   emit(F.result === "win" ? "fightWin" : "fightLose");
@@ -233,6 +234,7 @@ const FIGHT_AFTER = {
   },
   revenge(F){ if (F.result === "win") F.summary += " Encerrei essa história — por enquanto."; else addStat("happiness", -6); },
   tournament(F){ if (F.oppOutcome === "death") martial().banUntil = P().age + 2; },
+  hunt(F){ huntFightAfter(F); },
 };
 
 /* Lesão grave / coma fora do ringue: lesão corporal grave. */
@@ -280,7 +282,8 @@ function registerKill(F){
   else if (excess){ label = "homicídio doloso"; years = rint(12, Math.min(25, pen.max)); }
   else { label = "lesão corporal seguida de morte"; years = rint(4, 12); }
   const wit = { street:rint(1,6), provoke:rint(1,5), robbery:rint(0,3), prison:rint(2,8), rival:rint(0,3), hit:rint(0,2), revenge:rint(0,4) }[F.kind] ?? 2;
-  const pCaught = clamp((0.2 + wit*0.1 + (S.record.length ? 0.1 : 0) - num(S.crimeSkill)/300 - (S.org ? orgPower()/500 : 0) + (F.kind === "prison" ? 0.6 : 0)) * 100, 5, 95) / 100;
+  const gun = F.usedWeapon && arsenal().find(w => w.id === F.usedWeapon), gunTrace = gun ? byId(DATA.armory, gun.id).trace * (gun.registered ? 0.35 : 0.12) : 0;
+  const pCaught = clamp((0.2 + wit*0.1 + gunTrace + (S.record.length ? 0.1 : 0) - num(S.crimeSkill)/300 - (S.org ? orgPower()/500 : 0) + (F.kind === "prison" ? 0.6 : 0)) * 100, 5, 95) / 100;
   F.summary += ` ${wit ? `${wit} testemunha(s) viram tudo.` : "Ninguém viu."}`;
   if (F.kind === "prison" && S.prison){
     if (years > 0 && chance(pCaught)){ S.prison.years = Math.min(99, S.prison.years + years); S.prison.security = "máxima"; S.record.push({ crime:label, age:P().age, years }); F.summary += ` Condenado(a) por ${label}: +${years >= 99 ? "perpétua" : years + " anos"}. Transferido(a) para segurança máxima.`; }
@@ -297,6 +300,7 @@ function registerKill(F){
     schedule("homicideCase", rint(1, 3), { name, label, years, p: pCaught }, `A polícia investiga a morte de ${name}.`);
     F.summary += " Saí antes da polícia chegar. Mas a investigação vai começar.";
   }
+  if (S.dark && !S.dark.active && P().age >= 18 && chance(0.4)) enqueue("ev_dark_awakening");
   // família / aliados da vítima
   if (chance(F.kind === "rival" ? 0.8 : 0.45)) schedule("victimRevenge", rint(1, 5), { name, kin: F.kind === "rival" ? "a facção dele" : pick(["o irmão","o primo","o filho","a irmã","o melhor amigo"]) }, `A família de ${name} não vai esquecer.`);
 }

@@ -12,6 +12,7 @@ function occupation(){
   if (S.edu.school){ const m = byId(DATA.majors,S.edu.major) || byId(DATA.techCourses,S.edu.major); return `🎒 ${schoolName()}${m && !["fund","medio","supl"].includes(S.edu.school) ? " — " + esc(m.name) : ""}`; }
   if (S.retired) return "🏖️ Aposentado(a)";
   if (S.partTime) return `🧃 ${byId(DATA.partTime,S.partTime).name}`;
+  if (S.gig) return `${gigDef(S.gig.id).emoji} ${gigDef(S.gig.id).name} (autônomo)`;
   return p.age < 6 ? "🧸 Curtindo a infância" : "🔎 Sem ocupação";
 }
 function viewLife(){

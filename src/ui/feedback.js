@@ -8,7 +8,7 @@
    Barra de progresso + checklist de etapas + porcentagem + dicas que
    giram. `work` roda no meio (gerar vida, carregar save) e a tela some
    em fade com um acorde de "pronto". { long:true } = 4–6 s (abertura do
-   jogo e nova vida); padrão ≈1,5 s. Toque para pular. Em
+   jogo e nova vida); padrão ≈1,5 s. NÃO pode ser pulada. Em
    prefers-reduced-motion a tela aparece sem animações (CSS). */
 const BOOT_STEPS = ["Inicializando o motor de simulação…","Gerando árvore genealógica…","Sorteando país, cidade e família…","Calculando a economia global…","Carregando academias e submundo…","Treinando os guardas do presídio…","Afinando os efeitos sonoros…","Preparando seu destino…"];
 function showLoading(steps, work, done, opts = {}){
@@ -22,7 +22,7 @@ function showLoading(steps, work, done, opts = {}){
       <div class="ld-row"><div class="ld-step">${esc(steps[0])}</div><div class="ld-pct">0%</div></div>
       ${opts.long ? `<ol class="ld-list">${steps.map(t => `<li>${esc(t.replace(/…$/, ""))}</li>`).join("")}</ol>` : ""}
       <div class="ld-tip">💡 <b>Dica:</b> <span>${esc(tips[0])}</span></div>
-      <div class="ld-skip">toque para pular</div></div>`;
+      <div class="ld-skip">${opts.long ? "Preparando a simulação…" : ""}</div></div>`;
   el.classList.remove("out"); el.classList.add("on");
   const bar = el.querySelector(".ld-bar i"), stepEl = el.querySelector(".ld-step"), pctEl = el.querySelector(".ld-pct"), tipEl = el.querySelector(".ld-tip span"), items = el.querySelectorAll(".ld-list li");
   const total = opts.long ? 4300 + Math.random()*1400 : 1300 + Math.random()*500, t0 = performance.now(); // UI: não consome o RNG semeado
@@ -35,7 +35,7 @@ function showLoading(steps, work, done, opts = {}){
     el.classList.add("out");
     setTimeout(()=>{ el.classList.remove("on","out"); el.innerHTML = ""; done && done(); }, 320);
   };
-  el.onclick = finish;
+  el.onclick = null; // não pulável: roda até o fim da duração programada
   const tick = now => {
     if (finished) return;
     const k = Math.min(1, (now - t0)/total);

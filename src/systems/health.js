@@ -40,6 +40,7 @@ function checkupCost(){ return Math.round(priceOf(350) * (1 - effectivePlan().co
 /* Lesão aguda com possível sequela permanente (reduz o teto de saúde). */
 function injure(amount, cause, sequelaChance = 0.3){
   addStat("health", -amount);
+  if (amount >= 18) emit("hospital"); // ferimento sério = ambulância
   if (amount >= 12 && chance(sequelaChance)){
     const s = Math.round(amount * 0.25);
     S.health.sequelae = num(S.health.sequelae) + s;
@@ -58,7 +59,7 @@ function healthYear(){
   addictionsYear();
   // contrair doenças
   for (const d of DATA.illnesses){
-    if (S.illnesses.some(i=>i.id===d.id) || a < (d.minAge||0)) continue;
+    if (d.manual || S.illnesses.some(i=>i.id===d.id) || a < (d.minAge||0)) continue; // manual = só por causa específica (ex.: IST)
     let p = d.id === "flu" ? 0.07 : d.id === "depress" ? 0.012 : 0.0025 + Math.max(0, a - d.minAge)*0.00055;
     p *= illnessRisk(d) * (1.5 - st.health/100);
     if (chance(Math.min(0.2, p))){
@@ -142,7 +143,7 @@ function treatIllness(id, tierId){
   if (t.minStage && il.stage < t.minStage) return R(false, `Disponível apenas a partir do estágio ${DATA.stages[t.minStage].name}.`);
   const d = byId(DATA.illnesses, id), cost = treatmentCost(il, tierId);
   if (tierId !== "public" && !canAfford(cost)) return R(false, `Precisa de ${fmt(cost)} para o primeiro ano.`);
-  il.treated = true; il.tier = tierId;
+  il.treated = true; il.tier = tierId; emit("hospital");
   let extra = "";
   if (chance(t.risk)) extra = " Houve complicações." + injure(15, `Complicação no tratamento de ${d.name}`, 0.5);
   log(`Comecei tratamento (${t.name}) para ${d.name}${d.chronic ? " — controle contínuo" : ""}.${extra}`, extra ? "bad" : "");

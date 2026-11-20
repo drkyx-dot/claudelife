@@ -36,6 +36,7 @@ function viewCareer(){
   if (a >= 14 && !S.job && !inPrison()){
     h += `<div class="card"><h2>🧃 Meio período</h2>${DATA.partTime.map(j=>`<div class="row"><div class="grow"><div class="t">${j.name}</div><div class="s">${fmt(wageOf(j.s))}/ano · ${j.minAge}+ anos</div></div><button class="btn" ${a<j.minAge||S.partTime===j.id?"disabled":""} onclick="UI.do(()=>applyPartTime('${j.id}'))">Candidatar</button></div>`).join("")}</div>`;
   }
+  h += athleteCard() + gigCard();
   if (a >= 18 && !inPrison()){
     // vagas: elegíveis primeiro, com chance explicada; indisponíveis recolhidas com o motivo
     const elig = DATA.careers.filter(c => !jobEligibility(c)), not = DATA.careers.filter(c => jobEligibility(c));

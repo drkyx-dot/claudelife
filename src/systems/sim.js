@@ -24,8 +24,8 @@ function ageUp(){
   economyYear(); // inflação, salários e fase do ciclo
   S.activitiesThisYear = 0; S.actCount = {};
 
-  agingYear(); schoolYear(); careerYear(); martialYear(); businessYear(); assetsYear();
-  financeYear(Y); orgYear(); relationshipsYear(); identityYear(); looksYear(); petsYear(); healthYear(); prisonYear(); fugitiveYear();
+  agingYear(); schoolYear(); careerYear(); sportsYear(); gigYear(); martialYear(); businessYear(); assetsYear(); collectYear();
+  financeYear(Y); orgYear(); relationshipsYear(); identityYear(); looksYear(); petsYear(); healthYear(); prisonYear(); fugitiveYear(); darkYear();
   consequencesYear(); milestoneYear();
   S.hist = S.hist || { happy:0, health:0, n:0 };
   S.hist.happy += P().stats.happiness; S.hist.health += P().stats.health; S.hist.n++;

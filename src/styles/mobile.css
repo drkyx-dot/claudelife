@@ -225,3 +225,20 @@ footer.age{padding-left:max(var(--gutter), var(--sal));padding-right:max(var(--g
 .picklist button.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--surface2))}
 .picklist button b{color:var(--accent)}
 .hub-inner.still{animation:none}
+
+/* =====================================================================
+   MODO APP / TELA CHEIA (html.app-mode): a página não rola; quem rola é
+   o <body> (conteúdo do jogo), com overscroll travado — sem "puxar para
+   atualizar", sem efeito elástico e sem zoom de pinça acidental. Modais,
+   hub e linha do tempo continuam com rolagem interna própria.
+   ===================================================================== */
+html.app-mode{height:100%;overflow:hidden;overscroll-behavior:none;touch-action:pan-x pan-y}
+html.app-mode body{height:100%;height:var(--app-h);overflow-x:hidden;overflow-y:auto;overscroll-behavior:none;-webkit-overflow-scrolling:touch}
+html.app-mode.lock body{overflow:hidden}
+html.app-mode .modal,html.app-mode #hub{overscroll-behavior:contain}
+html.is-fullscreen body{background:var(--bg)}
+.fsbtn{display:grid;place-items:center;color:var(--text2)}
+.fsbtn svg{display:block}
+.idrow .fsbtn{margin-right:-4px}
+.hub-top{display:flex;justify-content:flex-end}
+.hub-top .hub-back{display:grid;place-items:center}

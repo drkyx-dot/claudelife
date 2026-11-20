@@ -13,6 +13,11 @@ function selfTest(lives=60){
   const randomAction = () => {
     const a = P().age, roll = rand();
     try {
+      if (!inPrison() && a >= 12 && rand() < 0.05){ const k = rand(); if (k < 0.4) startGig(pick(DATA.gigs).id); else if (S.gig){ k < 0.6 ? promoteGig() : k < 0.8 ? practiceGig() : setGigPace(rint(0,2)); } }
+      if (!inPrison() && a >= 18 && rand() < 0.03){ const k = rand(); if (k < 0.4) buyCollectible(pick(DATA.collectibles).id); else if (k < 0.55 && collection().length) sellCollectible(pick(collection()).uid); else if (k < 0.65 && collection().length) insureCollectible(pick(collection()).uid); else if (k < 0.85) buyWeapon(pick(DATA.armory).id); else applyGunLicense(); }
+      if (!inPrison() && a >= 18 && !dark().active && rand() < 0.004) awakenDark(chance(0.6) ? "code" : "none");
+      if (dark().active && rand() < 0.35) autoHunt();
+      if (isAthlete() && rand() < 0.3) extraTraining();
       if (inPrison() && roll < 0.25) startEscape();
       else if (inPrison() && roll < 0.8){ const k = pick(["yard","work","course","course","visit","appeal"]); k === "appeal" ? appealSentence() : prisonAct(k, pick(DATA.prisonCourses).id); }
       else if (a >= 8 && rand() < 0.05){ const k = rand(); if (k < 0.35) adoptPet(0); else if (k < 0.55) buyPet(pick(DATA.petSpecies.filter(s=>s.src==="shop")).id); else if (k < 0.65 && a >= 18) buyPet(pick(DATA.petSpecies.filter(s=>s.src==="exotic")).id); else if ((S.pets||[]).length) petAct(pick(S.pets).uid, pick(["play","play","feed","train","vet","giveaway"])); }
@@ -86,6 +91,8 @@ function selfTest(lives=60){
     res.petsOwned = (res.petsOwned||0) + num(S.stats.petsOwned); res.petAttacks = (res.petAttacks||0) + S.log.filter(e=>/atacou|atacado/.test(e.text)).length;
     res.cyberOk = (res.cyberOk||0) + num(S.stats.cyberOk); res.remitted = (res.remitted||0) + num(S.stats.remitted); res.spouseScams = (res.spouseScams||0) + num(S.stats.spouseScams);
     res.myopia = (res.myopia||0) + (look().myopia ? 1 : 0); res.visionTests = (res.visionTests||0) + (look().visionTested ? 1 : 0);
+    res.gigs = (res.gigs||0) + (S.gig ? 1 : 0); res.collectors = (res.collectors||0) + (collection().length ? 1 : 0); res.armed = (res.armed||0) + (arsenal().length ? 1 : 0);
+    res.darkKills = (res.darkKills||0) + num(S.dark?.kills); res.darkCaught = (res.darkCaught||0) + (S.dark?.caught ? 1 : 0); res.exAthletes = (res.exAthletes||0) + (S.flags.exAthlete ? 1 : 0);
     res.titles = (res.titles||0) + martial().titles.length; res.blackbelts = (res.blackbelts||0) + (bestMastery() >= 70 ? 1 : 0); res.wanted = (res.wanted||0) + (S.wanted ? 1 : 0);
     if (S.record.length) res.prison++;
     if (S.final && S.final.netWorth > wageOf(1e6)) res.rich++;
@@ -345,5 +352,70 @@ function layoutAudit(){
   render(); check("prisão (aba vida)");
   showHub("home"); check("hub"); showHub("create"); check("criador"); showHub("hall"); check("hall"); hideHub();
   out.OK = Object.values(out.telas).every(t => !t.rolagemHorizontal && !t.estouros.length) && !out.camposZoom.length && !out.alvosPequenos.length;
+  return out;
+}
+
+/* Bot de caçada (selftest): percorre as etapas como a UI. */
+function autoHunt(){
+  if (huntBlock()) return;
+  startHunt(pick(huntCandidates()));
+  if (chance(0.6)) huntStudy();
+  const w = arsenal().length && chance(0.5) ? pick(arsenal()).id : null;
+  huntExecute(w);
+  if (S.fight) autoFight();
+  else if (S.hunt && S.hunt.success) huntCleanup(pick(["meticulous","fast","frame"]));
+  S.hunt = null;
+}
+/* Autônomo: renda de 1º ano por atividade e riscos do trabalho adulto. */
+function gigTest(){
+  const out = { rendaInicial:{} };
+  for (const g of DATA.gigs){
+    S = null; newLife({ seed: 9100, country:"BR", cls:4 }); P().age = 26; P().stats.looks = 70; P().stats.intelligence = 70; P().stats.health = 80; S.edu.level = 4; S.flags.license = true; S.vehicles.push({ uid:uid(), id:DATA.vehicles[0].id, value:1000, country:"BR" });
+    const r = startGig(g.id); if (!r.ok){ out.rendaInicial[g.id] = "bloqueado: " + r.msg; continue; }
+    S.yearSummary = { income:0, taxes:0, expenses:0, lines:[] }; gigYear(); out.rendaInicial[g.id] = fmt(S.gig.lastIncome, true);
+  }
+  let exposed = 0, ist = 0;
+  for (let i=0;i<40;i++){
+    S = null; newLife({ seed: 9200+i }); P().age = 22; P().stats.looks = 80; startGig(i % 2 ? "adult" : "escort"); setGigPace(2);
+    for (let y=0;y<8 && P().alive;y++){ S.yearSummary = { income:0, taxes:0, expenses:0, lines:[] }; gigYear(); }
+    if (S.queue.some(q => q.id === "ev_adult_exposed")) exposed++; if (S.illnesses.some(x => x.id === "ist")) ist++;
+  }
+  out.exposicaoEm8Anos = `${exposed}/40`; out.istAcompanhante = `${ist}/20`;
+  out.OK = DATA.gigs.every(g => typeof out.rendaInicial[g.id] === "string") && exposed > 5 && ist > 0;
+  return out;
+}
+/* Esporte: carreira de futebol dos 18 aos 40 — contratos, títulos, aposentadoria. */
+function sportsTest(n = 20){
+  let retired = 0, titles = 0, contracts = 0, coaches = 0, injuries = 0;
+  for (let i=0;i<n;i++){
+    S = null; newLife({ seed: 9300+i }); P().age = 18; P().talents.sport = 80; P().stats.health = 90;
+    hireDirect("football", 0);
+    for (let y=0;y<24 && P().alive;y++){
+      ageUp();
+      while (validHead()){ const q = S.queue[0]; const n2 = EVENT_MAP[q.id].choices(q.ctx).length; resolveEvent(q.id === "ev_sport_retire" ? Math.min(1, n2-1) : q.id === "ev_sport_contract" ? n2 > 2 ? 1 : 0 : 0); if (S.fight) autoFight(); if (S.escape) autoEscape(); }
+      if (S.log.some(e => /Transferência|Renovei/.test(e.text) && e.age === P().age)) contracts++;
+    }
+    if (S.flags.exAthlete) retired++; if (S.job?.careerId === "coach" || S.jobHistory.some(j => /Técnico|Auxiliar técnico/.test(j.title))) coaches++;
+    titles += S.log.filter(e => /campeão\(ã\) com o/.test(e.text)).length; injuries += S.log.filter(e => /Lesão/.test(e.text)).length;
+  }
+  const out = { carreiras:n, aposentados:retired, viraramTecnico:coaches, assinaturasDeContrato:contracts, titulos:titles, lesoes:injuries };
+  out.OK = retired >= n*0.6 && contracts > n && titles > 0 && injuries > 0;
+  return out;
+}
+/* Lado sombrio: suspeita cresce com pistas, disfarce reduz, força-tarefa pode prender. */
+function darkTest(n = 40){
+  const run = withCover => {
+    let heat = 0, caught = 0, kills = 0;
+    for (let i=0;i<n;i++){
+      S = null; newLife({ seed: 9400+i }); P().age = 25; awakenDark("code");
+      if (withCover){ hireDirect("cashier", 0); const r = makePartner(); r.role = "spouse"; S.rels.push(r); }
+      for (let y=0;y<10 && P().alive && !inPrison();y++){ S.activitiesThisYear = 0; autoHunt(); ageUp(); while (validHead()){ resolveEvent(0); if (S.fight) autoFight(); if (S.escape) autoEscape(); } }
+      heat += dark().heat; kills += dark().kills; if (dark().caught || S.record.some(r => /série/.test(r.crime))) caught++;
+    }
+    return { suspeitaMedia: Math.round(heat/n), vitimasMedia: (kills/n).toFixed(1), presos: `${caught}/${n}`, presosN: caught, suspeitaPorVitima: +(heat/Math.max(1, kills)).toFixed(1) };
+  };
+  const out = { comDisfarce: run(true), semDisfarce: run(false) };
+  // disfarce = menos prisões e menos suspeita por vítima (quem é preso para de caçar, então a média bruta engana)
+  out.OK = out.comDisfarce.presosN < out.semDisfarce.presosN && out.comDisfarce.suspeitaPorVitima < out.semDisfarce.suspeitaPorVitima && parseFloat(out.comDisfarce.vitimasMedia) > 0;
   return out;
 }

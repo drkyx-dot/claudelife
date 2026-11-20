@@ -2,7 +2,7 @@
 /* ui/controller.js */
 
 const UI = {
-  tab(k){ if (k !== TAB) TAB_CHANGED = true; TAB = k; try{ localStorage.setItem("claudilife.tab", k); }catch(e){} render(); window.scrollTo({ top:0, behavior: REDUCED() ? "auto" : "smooth" }); },
+  tab(k){ if (k !== TAB) TAB_CHANGED = true; TAB = k; try{ localStorage.setItem("claudilife.tab", k); }catch(e){} render(); pageTop(true); },
   logFilter(k){ LOGFILTER = k; render(); }, logAll(){ LOGALL = true; render(); },
   /* busca: re-renderiza só a lista (mantém o foco no campo) */
   logSearch(v){ LOGQUERY = v.trim(); clearTimeout(UI._ls); UI._ls = setTimeout(()=>{ const el = $("#logbody"); if (el) el.innerHTML = renderLog(); }, 120); },
@@ -16,7 +16,7 @@ const UI = {
     ageUp(); LOGALL = false;
     saveGame(true); render();
     Sound.play("year"); floatDiff(before, takeSnapshot());
-    if (!P().alive){ closeModal(); window.scrollTo(0,0); toast(`${P().first} faleceu aos ${P().age} anos.`); return; }
+    if (!P().alive){ closeModal(); pageTop(); toast(`${P().first} faleceu aos ${P().age} anos.`); return; }
     yearBadge();
     if (S.queue.length) setTimeout(showEvent, REDUCED() ? 0 : 380); // deixa o selo do ano aparecer antes
   },
@@ -40,7 +40,7 @@ const UI = {
     if (r && r.msg) toast(say(r.msg));
     if (r && r.ok === false){ const v = $("#view"); restartClass(v, "shake"); Sound.play("error"); }
     else floatDiff(before, takeSnapshot());
-    if (!P().alive) window.scrollTo(0,0);
+    if (!P().alive) pageTop();
   },
   confirm(msg, yes){ modal(`<h3>Confirmar</h3><p>${esc(msg)}</p><div class="choices"><button class="primary" onclick="UI._yes()">Sim</button><button onclick="UI.close()">Cancelar</button></div>`); UI._yes = ()=>{ closeModal(); yes(); }; },
   uniDialog(){
@@ -110,12 +110,14 @@ const UI = {
     UI._cands = c; render();
     modal(`<h3>💘 Pretendentes</h3><div class="choices">${c.map((p,i)=>`<button onclick="UI.close();UI.do(()=>dateCandidate(UI._cands[${i}]))">${esc(p.first)} ${esc(p.last)}, ${p.age}<small>${p.gender==="F"?"Mulher":"Homem"} · aparência ${p.looks}/100${p.job?" · "+esc(p.job):""}</small></button>`).join("")}<button onclick="UI.close()">Ninguém me agradou</button></div>`);
   },
-  heir(u){ showLoading(["Lendo o testamento…","Dividindo a herança…","Uma nova geração começa…"], () => { continueAsHeir(u); HUD_PREV = null; saveGame(true); TAB = "life"; render(); }, () => { window.scrollTo(0,0); toast("Uma nova geração começa."); }); },
+  heir(u){ showLoading(["Lendo o testamento…","Dividindo a herança…","Uma nova geração começa…"], () => { continueAsHeir(u); HUD_PREV = null; saveGame(true); TAB = "life"; render(); }, () => { pageTop(); toast("Uma nova geração começa."); }); },
   menu(){
     modal(`<h3>☰ Menu</h3><div class="choices">
       <button onclick="saveGame();UI.close()">💾 Salvar agora</button>
       <button onclick="exportSave()">⬇️ Exportar save (JSON)</button>
       <button onclick="document.getElementById('imp').click()">⬆️ Importar save</button>
+      <button onclick="FS.toggle();UI.close()">${FS.active() ? "🗗 Sair da tela cheia" : "⛶ Tela cheia"}<small>no celular sem suporte nativo: modo app sem rolagem acidental</small></button>
+      <button onclick="UI.close();UI.guide()">📖 Guia rápido</button>
       <button onclick="saveGame(true);showHub('home')">🏠 Menu principal<small>vidas salvas, hall dos legados, nova vida</small></button>
       <button onclick="UI.beauty('style')">💇 Aparência e visão</button>
       <button onclick="UI.theme()">🌓 Alternar tema</button>
@@ -131,7 +133,7 @@ const UI = {
     closeModal(); if (!CUR_SLOT || (S && !o.heir)) startNewSlot(); // cada vida nova ganha seu slot
     showLoading(BOOT_STEPS,
       () => { newLife(o); HUD_PREV = null; TAB = "life"; LOGALL = false; LOGQUERY = ""; MARKET_COUNTRY = null; saveGame(true); render(); },
-      () => window.scrollTo(0,0), { long:true });
+      () => { pageTop(); UI.tutorial(); }, { long:true }); // tutorial logo após o carregamento da nova vida
   },
   toggleSound(){ Sound.toggle(); UI.menu(); },
   toggleLang(){ SETTINGS.lang = SETTINGS.lang === "forte" ? "leve" : "forte"; saveSettings(); render(); UI.menu(); },

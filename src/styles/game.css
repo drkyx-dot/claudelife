@@ -3,7 +3,7 @@
    feedback flutuante, balões de fala, ficha de NPC.
    ===================================================================== */
 /* ---------- Loading ---------- */
-#loading{position:fixed;inset:0;z-index:200;display:none;place-items:center;
+#loading{position:fixed;inset:0;z-index:200;display:none;place-items:center;cursor:progress;
   background:radial-gradient(900px 600px at 50% 20%, color-mix(in srgb,var(--accent) 35%, #0b0d14), #07080d 70%);color:#fff;cursor:pointer}
 #loading.on{display:grid;animation:fadeIn .25s var(--ease) both}
 #loading.out{animation:fadeOut .3s var(--ease) both}
@@ -212,3 +212,12 @@ body.hub-open{overflow:hidden}
 @media (max-width:420px){ .seg.tabs4{grid-template-columns:repeat(2,1fr)} }
 .seg.two{grid-template-columns:1fr 1fr}
 .card.dark .choices button,.card.dark .action{color:var(--text)}.card.dark .choices button small,.card.dark .action span{color:var(--muted)}
+/* tutorial */
+.tut .emoji{font-size:46px}
+.tut-dots{display:flex;gap:6px;justify-content:center;margin-bottom:10px}
+.tut-dots i{width:8px;height:8px;border-radius:8px;background:var(--surface3);transition:width var(--t) var(--ease),background var(--t)}
+.tut-dots i.on{width:22px;background:var(--accent)} .tut-dots i.done{background:color-mix(in srgb,var(--accent) 45%,var(--surface3))}
+.tut p{font-size:15.5px;line-height:1.55}
+.tut-nav{flex-direction:row}.tut-nav button{flex:1;text-align:center}
+.tut-off{display:flex;gap:8px;align-items:center;font-size:13.5px;color:var(--muted);margin:10px 0 0;min-height:44px}
+.tut-off input{width:20px;height:20px}
