@@ -13,7 +13,7 @@ const REDUCED = () => typeof matchMedia === "function" && matchMedia("(prefers-r
 let TAB = "life", LOGFILTER = "all", LOGALL = false, LOGQUERY = "", TAB_CHANGED = true;
 try { TAB = localStorage.getItem("claudilife.tab") || "life"; } catch(e){}
 
-function toast(msg){ const t = $("#toast"); if (!t) return; t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("show"), 2800); }
+function toast(msg){ msg = typeof gtxPlayer === "function" ? gtxPlayer(String(msg)) : msg; const t = $("#toast"); if (!t) return; t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("show"), 2800); }
 /* Avatar: emoji por idade/gênero + tom de pele escolhido no hub. */
 function avatarFor(age, gender, tone = ""){ const f = gender === "F"; return (age<3?"👶":age<13?(f?"👧":"👦"):age<18?"🧑":age<60?(f?"👩":"👨"):(f?"👵":"👴")) + (tone || ""); }
 function avatar(){ if (!P().alive) return "🪦"; if (inPrison()) return "🧑‍⚖️"; return avatarFor(P().age, P().gender, S.look?.tone); }

@@ -76,8 +76,8 @@ function solveStage(st){
 }
 
 /* ---------- Gerador ---------- */
-function genStage(d, idx, total){
-  const P0 = escapeParams(d), W = P0.size, H = P0.size;
+function genStage(d, idx, total, P0 = escapeParams(d), names = DATA.escapeStages){
+  const W = P0.size, H = P0.size;
   for (let attempt = 0; attempt < 60; attempt++){
     const g = Array.from({ length:H }, (_, y) => Array.from({ length:W }, (_, x) => (x === 0 || y === 0 || x === W-1 || y === H-1) ? "#" : "."));
     // blocos de parede e segmentos (corredores)
@@ -87,7 +87,7 @@ function genStage(d, idx, total){
     }
     const start = [1, H-2], exit = [W-2, 0];
     g[H-2][1] = "."; g[H-2][2] = "."; g[H-3][1] = "."; g[1][W-2] = "."; g[1][W-3] = ".";
-    const st = { w:W, h:H, grid: g.map(r => r.join("")), start, exit, key:null, guards:[], cams:[], range:P0.range, name: DATA.escapeStages[Math.min(idx, 2)] };
+    const st = { w:W, h:H, grid: g.map(r => r.join("")), start, exit, key:null, guards:[], cams:[], range:P0.range, name: names[Math.min(idx, names.length - 1)] };
     st.grid[0] = st.grid[0].slice(0, exit[0]) + "X" + st.grid[0].slice(exit[0]+1);
     // distâncias a partir da cela (sem guardas) — garante conectividade
     const dist = {}, bq = [start]; dist[start.join(",")] = 0;
@@ -155,7 +155,7 @@ function escapeMove(dir){
   if (!escFloor(st, nx, ny)) return "🧱 Parede.";
   if (nx === st.exit[0] && ny === st.exit[1] && !E.key) return "🔒 A porta exige o cartão-chave.";
   const k = nx + "," + ny;
-  if (visionAt(st, E.t).has(k) || visionAt(st, E.t + 1).has(k)){ E.pos = [nx, ny]; return failEscape("👮 Um guarda te viu!"); }
+  if (visionAt(st, E.t).has(k) || visionAt(st, E.t + 1).has(k)){ E.pos = [nx, ny]; return failEscape(E.mode === "street" ? "🚓 Um policial te viu e te derrubou." : "👮 Um guarda te viu!"); }
   E.pos = [nx, ny]; E.t++;
   emit("step");
   if (st.key && nx === st.key[0] && ny === st.key[1] && !E.key){ E.key = true; emit("pickup"); }
@@ -163,13 +163,18 @@ function escapeMove(dir){
     if (E.stage + 1 < E.stages.length){ E.stage++; E.t = 0; E.pos = [...escStage().start]; E.key = !escStage().key; emit("stage"); return `✅ ${st.name} superado! Próxima etapa: ${escStage().name}.`; }
     return succeedEscape();
   }
-  if (E.t >= st.limit) return failEscape("⏰ A contagem de presos começou — sua cela estava vazia.");
+  if (E.t >= st.limit) return failEscape(E.mode === "street" ? "⏰ As viaturas fecharam todas as saídas." : "⏰ A contagem de presos começou e sua cela estava vazia.");
   return dir === "wait" ? "⏳ Esperei imóvel nas sombras." : "";
 }
-function abortEscape(){ const E = S.escape; if (!E || E.stage || E.t) return false; S.escape = null; if (S.prison) S.prison.escTriedAge = null; return true; }
+function abortEscape(){
+  const E = S.escape; if (!E) return false;
+  if (E.mode === "street"){ surrenderChase(); return "surrender"; } // na rua, render-se vale a qualquer momento
+  if (E.stage || E.t) return false; S.escape = null; if (S.prison) S.prison.escTriedAge = null; return true;
+}
 
 function succeedEscape(){
-  const E = S.escape, pr = S.prison; E.over = true; E.result = "ok";
+  const E = S.escape; if (E.mode === "street") return succeedChase();
+  const pr = S.prison; E.over = true; E.result = "ok";
   S.wanted = { since:P().age, remaining: pr.years, crime: pr.crime, fakeId:false, country:P().country, years:0, security: pr.security };
   S.prison = null; S.stats.escapes = num(S.stats.escapes) + 1;
   addNoto(40); addStat("happiness", 15); addStress(10);
@@ -180,7 +185,8 @@ function succeedEscape(){
   return E.msg = "🏃 Você está livre! A partir de agora, é foragido(a): a polícia vai te procurar.";
 }
 function failEscape(why){
-  const E = S.escape, pr = S.prison; E.over = true; E.result = "fail";
+  const E = S.escape; if (E.mode === "street") return failChase(why);
+  const pr = S.prison; E.over = true; E.result = "fail";
   const add = rint(2, 4), hurt = rint(10, 20);
   pr.years += add; pr.escBlock = 2; pr.escAttempts = num(pr.escAttempts) + 1;
   if (pr.security === "mínima") pr.security = "média"; else if (pr.security === "média" && chance(0.5)) pr.security = "máxima";
@@ -194,7 +200,7 @@ function closeEscape(){ const E = S.escape; if (!E) return ""; const m = E.msg; 
 /* Bots e saves recarregados: resolve sem UI (chance cai com a dificuldade). */
 function autoEscape(){
   const E = S.escape; if (!E) return;
-  if (!E.over){ if (chance(0.62 - E.d*0.06)) succeedEscape(); else failEscape("👮 Pego(a) no corredor."); }
+  if (!E.over){ if (chance((E.mode === "street" ? 0.74 - E.d*0.07 : 0.62 - E.d*0.06))) succeedEscape(); else failEscape(E.mode === "street" ? "🚓 Cercado(a) num beco." : "👮 Pego(a) no corredor."); }
   closeEscape();
 }
 
@@ -209,7 +215,7 @@ function fugitiveYear(){
   if (chance(recaptureChance())){
     const y = W.remaining + rint(2, 5), crime = W.crime; S.wanted = null;
     log("🚔 Fui recapturado(a) depois de anos foragido(a).", "bad");
-    sendToPrison(y, `fuga da prisão (${crime})`, "máxima");
+    sendToPrison(y, `fuga da prisão (${crime})`, "máxima", { chase:true });
     return;
   }
   if (W.years >= 15){ S.wanted = null; log("📁 Meu caso de foragido(a) esfriou e saiu da lista de prioridades.", "good"); return; }
@@ -223,4 +229,59 @@ function buyFakeId(){
   if (chance(0.15)){ addNoto(10); return R(false, "O falsário era informante. Perdi o dinheiro e a polícia sabe meu novo nome."); }
   W.fakeId = true; log("🪪 Comprei uma identidade falsa.", "bad");
   return R(true, "Nova identidade. Empregos comuns voltam a ser possíveis (concursos, não).");
+}
+
+/* =====================================================================
+   PERSEGUIÇÃO POLICIAL — quando a polícia chega para prender (flagrante,
+   rastreio, mandado), abre o mesmo minigame em tema de rua.
+   Dificuldade d (0–7) = pena/3 + notoriedade alta + policiamento eficiente
+   do país − proteção de organização forte. Crimes leves: grade 7×7,
+   1 policial e bastante folga; crimes graves: mais policiais e câmeras.
+   Fugiu → escapa da abordagem (e pode ficar procurado se foi reconhecido);
+   pego → preso com +1 ano por resistência; rendeu-se → preso sem extra.
+   ===================================================================== */
+DATA.chasePlaces = ["Becos do bairro", "Feira lotada", "Estação de metrô", "Canteiro de obras", "Galerias do centro"];
+function chaseParams(d){
+  return { size: Math.min(10, 7 + Math.floor(d/2)), guards: Math.min(5, 1 + Math.floor(d*0.7)), cams: Math.min(3, Math.floor(d/2)),
+           range: d >= 5 ? 4 : 3, slack: Math.max(3, 10 - d), stages: 1, keyFrom: 999 };
+}
+function chaseDifficulty(years){
+  return Math.max(0, Math.min(7, Math.round(years/3) + (P().notoriety > 60 ? 1 : 0) + (country().crime < 0.8 ? 1 : 0) - (S.org && S.org.rank >= 2 ? 1 : 0)));
+}
+/* Pode virar perseguição? (só adulto, livre, sem outro minigame aberto) */
+function canChase(){ return !!S && P().alive && !inPrison() && !S.escape && P().age >= ageOf("adult"); }
+function startChase(years, crime, security){
+  const d = chaseDifficulty(years), place = pick(DATA.chasePlaces);
+  const st = genStage(d, 0, 1, chaseParams(d), [place]);
+  S.escape = { mode:"street", d, stages:[st], stage:0, t:0, pos:[...st.start], key:true, over:false, result:null, msg:"", pending:{ years, crime, security } };
+  addStress(12); emit("siren");
+  log(`🚓 A polícia chegou para me prender por ${crime}.`, "bad", ["crime"]);
+  return S.escape;
+}
+function succeedChase(){
+  const E = S.escape, pd = E.pending; E.over = true; E.result = "ok";
+  const seen = chance(Math.min(0.85, 0.3 + E.d*0.08));   // alguém te reconheceu?
+  addNoto(8 + E.d*2); addStress(8); S.stats.chases = num(S.stats.chases) + 1;
+  if (seen){
+    if (S.wanted){ S.wanted.remaining = Math.min(99, S.wanted.remaining + pd.years); S.wanted.crime += ` e ${pd.crime}`; }
+    else S.wanted = { since:P().age, remaining: pd.years, crime: pd.crime, fakeId:false, country:P().country, years:0, security: pd.security || "média" };
+    log(`🏃 Fugi da polícia, mas me reconheceram: agora sou procurado(a) por ${pd.crime}.`, "bad", ["crime"]);
+    emit("escape");
+    return E.msg = `Você despistou a polícia, mas a câmera pegou seu rosto. Agora há um mandado de prisão contra você (${pd.crime}).`;
+  }
+  log(`🏃 Despistei a polícia. Ninguém conseguiu me identificar.`, "good", ["crime"]);
+  emit("escape");
+  return E.msg = "Você sumiu no meio do povo. Ninguém conseguiu te identificar, mas a polícia não vai esquecer o caso.";
+}
+function failChase(why){
+  const E = S.escape, pd = E.pending; E.over = true; E.result = "fail";
+  const seq = injure(rint(3, 9), "A imobilização na abordagem", 0.1);
+  sendToPrison(pd.years + 1, `${pd.crime} e resistência à prisão`, pd.security);
+  emit("caught");
+  return E.msg = `${why} Fui algemado(a). Resistir rendeu mais 1 ano: ${pd.years + 1} ano(s) por ${pd.crime}.${seq}`;
+}
+function surrenderChase(){
+  const E = S.escape, pd = E.pending; E.over = true; E.result = "surrender";
+  sendToPrison(pd.years, pd.crime, pd.security);
+  return E.msg = `Levantei as mãos e me entreguei. ${pd.years} ano(s) por ${pd.crime}, sem pena extra.`;
 }

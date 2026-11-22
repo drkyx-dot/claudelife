@@ -771,7 +771,8 @@ html.is-fullscreen body{background:var(--bg)}
 <div id="hub" role="dialog" aria-label="Menu principal"></div>
 
 <!-- dev: erros de script aparecem na tela (útil em testes headless) -->
-<script>addEventListener("error", e => { const d = document.createElement("pre"); d.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:999;background:#b00020;color:#fff;padding:10px;font:12px monospace;white-space:pre-wrap;border-radius:8px"; d.textContent = `${e.message}\n${(e.filename||"").split("/").slice(-2).join("/")}:${e.lineno}`; document.body.appendChild(d); });</script>
+<script>/* painel de erro só no modo ?debug (o jogador vê recuperação automática: ui/safety.js) */
+if (/debug/.test(location.search)) addEventListener("error", e => { const d = document.createElement("pre"); d.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:999;background:#b00020;color:#fff;padding:10px;font:12px monospace;white-space:pre-wrap;border-radius:8px"; d.textContent = `${e.message}\n${(e.filename||"").split("/").slice(-2).join("/")}:${e.lineno}`; document.body.appendChild(d); });</script>
 <!-- 1. dados (catálogos puros) -->
 <script>/* src/data/world.js */
 "use strict";
@@ -863,6 +864,22 @@ DATA.traits = [
   { id:"spendthrift",name:"Gastador",        desc:"+felicidade, +gastos",         opp:"frugal" },
   { id:"honest",     name:"Íntegro",         desc:"+reputação, crimes pesam mais",opp:null },
 ];
+
+/* Idades legais por país (simplificado, valores típicos de cada lei):
+   adult = maioridade civil · work = idade mínima para trabalho (aprendiz/meio período)
+   drive = carteira de motorista · drink = bebida alcoólica · gamble = cassino/loteria.
+   Usadas por ageOf() em state/state.js. */
+DATA.ageRules = {
+  BR:{ adult:18, work:14, drive:18, drink:18, gamble:18 },
+  PT:{ adult:18, work:16, drive:18, drink:18, gamble:18 },
+  US:{ adult:18, work:14, drive:16, drink:21, gamble:21 },
+  JP:{ adult:18, work:15, drive:18, drink:20, gamble:20 },
+  DE:{ adult:18, work:15, drive:18, drink:18, gamble:18 },
+  MX:{ adult:18, work:15, drive:18, drink:18, gamble:18 },
+  NG:{ adult:18, work:15, drive:18, drink:18, gamble:18 },
+  IN:{ adult:18, work:14, drive:18, drink:21, gamble:21 },
+};
+DATA.ageRuleNames = { adult:"maioridade", work:"trabalhar", drive:"dirigir", drink:"beber", gamble:"apostar" };
 </script>
 <script>/* src/data/education.js */
 "use strict";
@@ -1702,7 +1719,7 @@ DATA.interview = [
 DATA.tips = [
   "Na briga, o modo 🎯 Controlado usa sua maestria para DOSAR a força: faixa-preta quase nunca mata sem querer.",
   "💢 Com tudo anula o controle: o dano sobe, e a chance de matar alguém triplica.",
-  "Golpes especiais (Mata-Leão, Chute Alto na Têmpora…) são desbloqueados treinando na Academia de Lutas.",
+  "Golpes especiais (Mata-Leão, Chute Alto na Têmpora…) aparecem conforme você treina na Academia de Lutas.",
   "Treino intenso rende quase o dobro de maestria, mas lesiona bem mais, ainda mais depois dos 50.",
   "Na fuga da prisão, nunca pise em casas vermelhas (vigiadas agora) nem laranjas (vigiadas no próximo turno).",
   "Câmeras giram a cada 2 turnos. Às vezes, esperar ⏸ é o melhor movimento.",
@@ -1864,9 +1881,69 @@ const PROPERTY_ID_MIGRATION = { townhouse:"sobrado" }; // ids removidos em vers�
 
 let S = null; // estado global da vida atual
 
+/* ---------- Formato: força o TIPO certo de cada campo antes de qualquer uso ----------
+   Saves antigos, gravados no meio de um erro ou editados podem trazer
+   lista como texto, objeto como null etc. Aqui tudo volta ao formato
+   esperado; ensureState() depois preenche os valores padrão. */
+const isObj = v => !!v && typeof v === "object" && !Array.isArray(v);
+const SHAPE = {
+  lists:   ["rels","log","achievements","illnesses","properties","vehicles","loans","businesses","scheduled","consequences","queue","record","jobHistory","pets","collection","arsenal","lineage"],
+  objects: ["edu","flags","health","world","stats","investments","cooldown","addictions","actCount","martial","look","identity","dark"],
+  nullable:["job","prison","org","gig","wanted","fight","escape","hunt","yearSummary","lastYear","final","snap"],
+  strings: ["rental","partTime"],
+};
+function normalizeShape(st){
+  for (const k of SHAPE.lists){ st[k] = Array.isArray(st[k]) ? st[k].filter(x => k === "lineage" || k === "achievements" || isObj(x)) : []; }
+  for (const k of SHAPE.objects) if (!isObj(st[k])) st[k] = {};
+  for (const k of SHAPE.nullable) if (st[k] !== null && st[k] !== undefined && !isObj(st[k])) st[k] = null;
+  for (const k of SHAPE.strings) if (st[k] !== null && st[k] !== undefined && typeof st[k] !== "string") st[k] = null;
+  const p = st.player; if (!isObj(p.stats)) p.stats = {};
+  for (const k of ["health","happiness","intelligence","looks"]) p.stats[k] = clamp(num(p.stats[k], 50));
+  if (!isObj(p.talents)) p.talents = {}; for (const k of ["music","acting","sport"]) p.talents[k] = clamp(num(p.talents[k], 30));
+  if (!Array.isArray(p.traits)) p.traits = []; p.traits = p.traits.filter(t => byId(DATA.traits, t));
+  p.age = Math.max(0, Math.round(num(p.age))); p.alive = p.alive !== false;
+  if (!byId(DATA.countries, p.country)) p.country = "BR";
+  if (!byId(DATA.countries, p.country).cities.includes(p.city)) p.city = byId(DATA.countries, p.country).cities[0];
+  st.money = num(st.money); st.seed = Math.round(num(st.seed, 12345));
+  // listas de objetos com campos obrigatórios
+  st.rels = st.rels.filter(r => r.uid && typeof r.first === "string").map(r => ({ ...r, age: Math.max(0, Math.round(num(r.age))), rel: clamp(num(r.rel, 50)), alive: r.alive !== false }));
+  st.queue = st.queue.filter(q => typeof q.id === "string" && EVENT_MAP && EVENT_MAP[q.id]).map(q => ({ id:q.id, ctx: isObj(q.ctx) ? q.ctx : {} }));
+  st.scheduled = st.scheduled.filter(x => typeof x.kind === "string").map(x => ({ ...x, at: num(x.at, p.age + 1), ctx: isObj(x.ctx) ? x.ctx : {} }));
+  st.log = st.log.filter(e => typeof e.text === "string");
+  for (const k of ["properties","vehicles","businesses","loans","collection","arsenal","pets"]) st[k] = st[k].filter(x => typeof x.id === "string" || k === "loans").map(x => ({ uid: x.uid || uid(), ...x }));
+  // nulos que precisam de estrutura interna válida (senão viram null)
+  if (st.job && (!byId(DATA.careers, st.job.careerId))) st.job = null;
+  if (st.job){ const c = byId(DATA.careers, st.job.careerId); st.job.level = Math.max(0, Math.min(c.levels.length - 1, Math.round(num(st.job.level)))); for (const k of ["levelYears","years","perf","effort","salary"]) st.job[k] = num(st.job[k], k === "perf" ? 55 : k === "effort" ? 1 : 0); }
+  if (st.prison){ st.prison.years = Math.max(1, Math.round(num(st.prison.years, 1))); st.prison.served = Math.round(num(st.prison.served)); st.prison.crime = String(st.prison.crime || "crime"); if (!isObj(st.prison.courses)) st.prison.courses = {}; }
+  if (st.org && !(Array.isArray(st.org.members) && Array.isArray(st.org.ops))){ st.org.members = Array.isArray(st.org.members) ? st.org.members : []; st.org.ops = Array.isArray(st.org.ops) ? st.org.ops : []; }
+  if (st.org){ st.org.rivals = Array.isArray(st.org.rivals) ? st.org.rivals.filter(isObj) : []; st.org.territories = Array.isArray(st.org.territories) ? st.org.territories.filter(t => typeof t === "string") : []; st.org.members = st.org.members.filter(isObj); st.org.ops = st.org.ops.filter(isObj); st.org.name = String(st.org.name || "Organização"); st.org.rank = Math.max(0, Math.min(DATA.orgRanks.length - 1, Math.round(num(st.org.rank)))); }
+  if (st.wanted){ for (const k of ["since","remaining","years"]) st.wanted[k] = Math.max(0, Math.round(num(st.wanted[k]))); st.wanted.crime = String(st.wanted.crime || "crime"); }
+  if (st.gig && !byId(DATA.gigs, st.gig.id)) st.gig = null;
+  if (st.fight && !(DATA.fightProfiles[st.fight.kind] && isObj(st.fight.opp) && isObj(st.fight.me) && isObj(st.fight.ctx) && Array.isArray(st.fight.lines))) st.fight = null;
+  if (st.escape && !(Array.isArray(st.escape.stages) && st.escape.stages.length && st.escape.stages.every(x => isObj(x) && Array.isArray(x.grid)) && Array.isArray(st.escape.pos))) st.escape = null;
+  if (st.escape && st.escape.mode !== "street" && !st.prison) st.escape = null; // fuga de presídio sem presídio
+  if (st.escape && st.escape.mode === "street" && !(isObj(st.escape.pending) && num(st.escape.pending.years) > 0)) st.escape = null;
+  if (st.hunt && !isObj(st.hunt.t)) st.hunt = null;
+  if (isObj(st.martial)){ if (!isObj(st.martial.arts)) st.martial.arts = {}; if (!Array.isArray(st.martial.enrolled)) st.martial.enrolled = []; if (!Array.isArray(st.martial.titles)) st.martial.titles = []; if (!isObj(st.martial.rec)) st.martial.rec = {}; }
+  if (isObj(st.dark) && !Array.isArray(st.dark.victims)) st.dark.victims = [];
+  if (isObj(st.world) && !Array.isArray(st.world.history)) st.world.history = [];
+  if (isObj(st.stats) && !Array.isArray(st.stats.countries)) st.stats.countries = [p.country];
+  if (isObj(st.identity)) for (const k of ["other","same","both","none","pan","steps"]) st.identity[k] = num(st.identity[k]);
+  return st;
+}
+
 /* ---------- Defaults: garante todos os campos (vida nova, migração, herdeiro) ---------- */
 function ensureState(st = S){
+  normalizeShape(st);
   const p = st.player;
+  st.edu = Object.assign({ level:0, school:null, yearsLeft:0, perf:60, major:null, degrees:[], techs:[], debt:0, dropped:false }, st.edu);
+  if (!Array.isArray(st.edu.degrees)) st.edu.degrees = []; if (!Array.isArray(st.edu.techs)) st.edu.techs = [];
+  st.edu.level = Math.max(0, Math.min(6, Math.round(num(st.edu.level)))); st.edu.perf = clamp(num(st.edu.perf, 60)); st.edu.yearsLeft = Math.max(0, num(st.edu.yearsLeft)); st.edu.debt = Math.max(0, num(st.edu.debt));
+  p.first = String(p.first || "Sem nome"); p.last = String(p.last || ""); p.gender = p.gender === "F" ? "F" : "M";
+  p.birthYear = Math.round(num(p.birthYear, 2000)); p.cls = Math.max(0, Math.min(DATA.classes.length - 1, Math.round(num(p.cls, 4))));
+  p.fame = clamp(num(p.fame)); p.notoriety = clamp(num(p.notoriety)); p.lifestyle = Math.max(0, Math.min(3, Math.round(num(p.lifestyle, 1))));
+  st.activitiesThisYear = Math.max(0, Math.round(num(st.activitiesThisYear))); st.priceIndex = num(st.priceIndex, 1) || 1;
+  st.lifeNo = Math.max(1, Math.round(num(st.lifeNo, 1))); st.parole = Math.max(0, num(st.parole)); st.unemployedYears = Math.max(0, num(st.unemployedYears));
   p.stress     = clamp(num(p.stress, 15));
   p.reputation = clamp(num(p.reputation, 50));
   p.vitality   = clamp(num(p.vitality, 100));
@@ -1959,6 +2036,7 @@ const LOG_TAGS = [
 ];
 function autoTag(text){ return LOG_TAGS.filter(([,re]) => re.test(text)).map(([t]) => t); }
 function log(text, kind = "", tags){
+  text = typeof gtxPlayer === "function" ? gtxPlayer(String(text)) : String(text); // "preso(a)" → forma do gênero
   S.log.push({ age:S.player.age, year:year(), text, kind, tags: tags || autoTag(text) });
   if (S.log.length > 4000) S.log.splice(0, S.log.length - 4000); // evita save gigante
 }
@@ -2004,6 +2082,22 @@ const partner = () => S.rels.find(r => (r.role==="partner"||r.role==="spouse"||r
 const children = (alive=true) => S.rels.filter(r => r.role==="child" && (!alive || r.alive));
 const inPrison = () => !!S.prison;
 const classOf = () => DATA.classes[P().cls] || DATA.classes[4];
+/* Idade legal no país atual para uma regra (adult, work, drive, drink, gamble). */
+function ageOf(rule){ const r = DATA.ageRules[P().country] || DATA.ageRules.BR; return num(r[rule], 18); }
+const minor = () => P().age < ageOf("adult");
+/* Conta de hospital, multa leve etc.: menor de idade não paga do próprio
+   bolso — os pais (ou quem cria) pagam, e isso pesa um pouco na relação. */
+function payBill(amount, what){
+  amount = Math.round(Math.max(0, num(amount))); if (!amount) return "";
+  if (minor()){
+    const ps = parents(); for (const pa of ps) pa.rel = clamp(pa.rel - (amount > priceOf(2000) ? 3 : 1));
+    log(`${ps.length ? "Meus pais pagaram" : "A família que me cria pagou"} ${what} (${fmt(amount)}).`, "");
+    return ` ${ps.length ? "Meus pais pagaram" : "Minha família pagou"} ${what}: ${fmt(amount)}.`;
+  }
+  addMoney(-amount); return ` ${what[0].toUpperCase() + what.slice(1)}: ${fmt(amount)}.`;
+}
+/* "Só a partir dos 21 nos Estados Unidos." — explica a regra do país. */
+function ageReason(rule){ const a = ageOf(rule), base = DATA.ageRules.BR[rule]; return a !== base ? `Em ${country().name}, só a partir dos ${a} anos.` : `Idade mínima: ${a} anos.`; }
 const clsBand = () => classOf().band; // 0–4: faixa usada pelas fórmulas gerais
 function career(){ return S.job ? byId(DATA.careers, S.job.careerId) : null; }
 function residence(){ return S.properties.find(p => p.residence); }
@@ -2148,8 +2242,10 @@ function saveGame(silent){
     if (!silent) toast("Jogo salvo 💾"); return true;
   } catch(e){ if (!silent) toast("Não foi possível salvar (armazenamento cheio ou indisponível)."); return false; }
 }
+/* Mínimo para dar para recuperar uma vida: o jogador existe. O resto o
+   normalizador (state.js) reconstrói. */
 function validateState(st){
-  return st && st.player && st.player.stats && Array.isArray(st.rels) && Array.isArray(st.log) && st.edu && typeof st.money === "number";
+  return !!(st && typeof st === "object" && st.player && typeof st.player === "object" && typeof st.player.first === "string");
 }
 function migrate(st){
   // ponto central de migração entre versões de save (ensureState preenche/converte campos)
@@ -2633,7 +2729,7 @@ EVENTS.push(
 { id:"ev_investigation", emoji:"🕵️", title:"Investigação policial", age:[14,90], weight:()=>P().notoriety>25 && !inPrison() ? P().notoriety/20 : 0, cd:3,
   text:()=> "A polícia está investigando você por crimes antigos.",
   choices:()=>[
-    { label:"Contratar advogado", hint:"caro", run:()=>{ addMoney(-priceOf(8000)); if (chance(0.65)) { addNoto(-15); return "Meu advogado arquivou o caso."; } sendToPrison(rint(1,4), "crimes antigos"); return "Mesmo assim, fui condenado(a)."; } },
+    { label:"Contratar advogado", hint:"caro", run:()=>{ const pay = costFx(priceOf(8000), "o advogado"); if (chance(0.65)) { addNoto(-15); return "Meu advogado arquivou o caso." + pay; } sendToPrison(rint(1,4), "crimes antigos"); return "Mesmo assim, fui condenado(a)."; } },
     { label:"Cooperar e confessar", run:()=>{ sendToPrison(rint(1,3), "confissão"); P().karma = clamp(P().karma+10); return "Confessei e peguei pena reduzida."; } },
     { label:"Fugir do país", hint:"muda de país", run:()=>{ if (chance(0.5)){ emigrate(pick(DATA.countries.filter(c=>c.id!==P().country)).id, true); addNoto(-30); return `Fugi para ${country().name}!`; } sendToPrison(rint(3,8), "tentativa de fuga"); return "Fui pego(a) no aeroporto."; } },
   ]}
@@ -2796,7 +2892,7 @@ EVENTS.push(
   text:()=> "Você teve uma crise de ansiedade no meio do dia. O corpo está cobrando.",
   choices:()=>[
     { label:"Tirar um período sabático", hint:"sem salário por um tempo", run:()=>{ addStress(-30); if (S.job){ addMoney(-Math.round(S.job.salary*0.3)); S.job.perf = clamp(S.job.perf-10); } return "Parei para cuidar de mim." + fx({happiness:8}); } },
-    { label:"Começar terapia", run:()=>{ addStress(-18); return "Estou aprendendo a lidar." + fx({money:-priceOf(1200), happiness:4}); } },
+    { label:"Começar terapia", run:()=>{ addStress(-18); return "Estou aprendendo a lidar." + costFx(priceOf(1200), "a terapia", { happiness:4 }); } },
     { label:"Ignorar e seguir", run:()=>{ addStress(5); return "Engoli o choro." + fx({happiness:-6}) + injure(6, "O colapso nervoso", 0.1); } },
   ]},
 { id:"ev_parent_move", emoji:"👵", title:"Pai/Mãe precisa de cuidados", age:[30,80], weight:()=> parents().some(p=>p.age>=78 && !p.livesWithMe) && P().age >= 30 ? 1.3 : 0, cd:6,
@@ -2810,7 +2906,7 @@ EVENTS.push(
 { id:"ev_sport_injury", emoji:"🦵", title:"Lesão em campo", age:[16,40], weight:()=> S.job?.careerId === "athlete" ? 1.8 : 0, cd:2,
   text:()=> "Você rompeu um ligamento em plena temporada.",
   choices:()=>[
-    { label:"Cirurgia e recuperação completa", hint:"perde a temporada", run:()=>{ S.job.perf = clamp(S.job.perf-15); return "Voltei mais devagar, mas inteiro(a)." + fx({money:-priceOf(3000)}) + injure(8, "A lesão esportiva", 0.15); } },
+    { label:"Cirurgia e recuperação completa", hint:"perde a temporada", run:()=>{ S.job.perf = clamp(S.job.perf-15); return "Voltei mais devagar, mas inteiro(a)." + costFx(priceOf(3000), "a cirurgia") + injure(8, "A lesão esportiva", 0.15); } },
     { label:"Infiltração e jogar a final", hint:"risco de sequela", run:()=>{ addFame(6); return "Jogamos a final!" + injure(18, "Jogar lesionado(a)", 0.7); } },
   ]},
 );
@@ -2972,7 +3068,7 @@ EVENTS.push(
         S.stats.crimes++;
         if (chance(0.55 + S.crimeSkill/300)){ const g = priceOf(rint(3000, 15000)); S.dirty += g; S.stats.crimesOk++; S.stats.dirtyEarned += g; S.crimeSkill = clamp(S.crimeSkill+3); addNoto(6); emit("crime"); return `Serviço feito. ${fmt(g)} em dinheiro sujo na mão.`; }
         addNoto(10); emit("siren");
-        if (P().age >= 18 && chance(0.6)){ sendToPrison(rint(1,4), "participação em contrabando"); return "Era uma armadilha da polícia. Fui preso(a)."; }
+        if (P().age >= 18 && chance(0.6)){ sendToPrison(rint(1,4), "participação em contrabando", undefined, { chase:true }); return "Era uma armadilha da polícia."; }
         return "Deu ruim, larguei a carga e saí correndo." + fx({happiness:-5});
       } },
     investigateChoice("ev_crime_invite"),
@@ -3081,7 +3177,7 @@ EVENTS.push(
   speech:c=> say(`O chefe mandou você ${c.task}. Não faz merda.`),
   text:c=> `${S.org.name} te deu uma tarefa: ${c.task}.`,
   choices:c=>[
-    { label:"✅ Cumprir a tarefa", run:()=>{ if (chance(0.75 + S.crimeSkill/400)){ S.org.respect = clamp(S.org.respect + rint(6,12)); S.crimeSkill = clamp(S.crimeSkill+2); const g = priceOf(rint(1000,5000)); S.dirty += g; S.stats.dirtyEarned += g; return `Feito. Ganhei respeito e ${fmt(g)} sujos.`; } emit("siren"); if (chance(0.5)){ sendToPrison(rint(1,3), "tráfico de mercadoria ilegal"); return "Caí numa blitz com a encomenda."; } return "Deu errado e o chefe ficou puto." + (S.org.respect = clamp(S.org.respect-10), ""); } },
+    { label:"✅ Cumprir a tarefa", run:()=>{ if (chance(0.75 + S.crimeSkill/400)){ S.org.respect = clamp(S.org.respect + rint(6,12)); S.crimeSkill = clamp(S.crimeSkill+2); const g = priceOf(rint(1000,5000)); S.dirty += g; S.stats.dirtyEarned += g; return `Feito. Ganhei respeito e ${fmt(g)} sujos.`; } emit("siren"); if (chance(0.5)){ sendToPrison(rint(1,3), "tráfico de mercadoria ilegal", undefined, { chase:true }); return "Caí numa blitz com a encomenda."; } return "Deu errado e o chefe ficou puto." + (S.org.respect = clamp(S.org.respect-10), ""); } },
     { label:"✋ Recusar", hint:"respeito despenca", run:()=>{ S.org.respect = clamp(S.org.respect - 15); if (chance(0.2)) return "Recusei. Me lembraram, de um jeito nada gentil, quem manda." + injure(8, "O \"recado\" da organização", 0.2); return "Recusei. Fui ficando de escanteio."; } },
     { label:"🚪 Pedir para sair da organização", run:()=> leaveOrg().msg },
   ]},
@@ -3156,8 +3252,8 @@ EVENTS.push(
   setup:()=>({ amt: priceOf(rint(200, 1200)) }),
   text:c=> `Seu celular caiu e a tela estourou. Um novo custa ${fmt(c.amt)}.`,
   choices:c=>[
-    { label:"🛒 Comprar um novo", run:()=> "Celular novo na mão." + fx({money:-c.amt, happiness:2}) },
-    { label:"🔧 Trocar só a tela", run:()=> "Ficou quase novo." + fx({money:-Math.round(c.amt*0.3)}) },
+    { label:"🛒 Comprar um novo", run:()=> "Celular novo na mão." + costFx(c.amt, "o celular novo", { happiness:2 }) },
+    { label:"🔧 Trocar só a tela", run:()=> "Ficou quase novo." + costFx(c.amt*0.3, "o conserto") },
     { label:"🤷 Usar trincado mesmo", run:()=> "Vou cortar o dedo um dia, mas tudo bem." + fx({happiness:-2}) },
   ]},
 { id:"ev_identity_theft", emoji:"🕵️", title:"Golpe no seu nome", age:[18,95], weight:()=> 0.7 * country().crime, cd:8,
@@ -3377,7 +3473,7 @@ EVENTS.push(
   text:()=> "Uma van parou do seu lado. Homens encapuzados tentaram te puxar para dentro.",
   choices:()=>[
     { label:"🥊 Reagir", hint:"abre o combate", run:()=>{ startFight("robbery", { amt: priceOf(5000) }); return "Gritei e parti pra cima."; } },
-    { label:"🏃 Correr para a segurança", run:()=> chance(0.6) ? "O segurança da família apareceu a tempo." + fx({happiness:-5}) + (addStress(15), "") : "Me pegaram. Fiquei 3 dias no cativeiro até pagarem o resgate." + fx({money:-Math.min(Math.max(0,S.money), priceOf(200000)), happiness:-20}) + (addStress(30), "") },
+    { label:"🏃 Correr para a segurança", run:()=> chance(0.6) ? "O segurança da família apareceu a tempo." + fx({happiness:-5}) + (addStress(15), "") : "Me pegaram. Fiquei 3 dias no cativeiro até pagarem o resgate." + (minor() ? payBill(priceOf(200000), "o resgate") : fx({money:-Math.min(Math.max(0,S.money), priceOf(200000))})) + fx({happiness:-20}) + (addStress(30), "") },
   ]},
 );
 </script>
@@ -3589,7 +3685,7 @@ EVENTS.push(
   choices:c=>[
     { label:"⚖️ Cobrar na Justiça (pequenas causas)", run:()=> chance(0.55) ? (addMoney(c.amt), "Ganhei a causa e recebi.") : "Processo arquivado: nunca vi o dinheiro." + fx({happiness:-3}) },
     { label:"📣 Expor o caloteiro nas redes", run:()=>{ S.gig.audience += rint(5, 30); return chance(0.3) ? "Viralizou e ele pagou correndo." + fx({money:c.amt}) : "Ganhei seguidores, mas nada de dinheiro."; } },
-    { label:"🙈 Deixar pra lá", run:()=>{ addMoney(-0); addStress(4); return "Prejuízo assumido."; } },
+    { label:"🙈 Deixar pra lá", run:()=>{ addStress(4); return "Engoli o prejuízo."; } },
   ]},
 { id:"ev_gig_viral", emoji:"🚀", title:"Viralizou!", age:[12,99], weight:0, cond:()=>!!S.gig,
   text:()=> "Um vídeo seu explodiu. Milhões de visualizações em dois dias.",
@@ -3647,14 +3743,14 @@ EVENTS.push(
     { label:"🆓 Ficar livre no mercado", run:()=>{ S.job.contract = 1; S.job.contractMult = 0.8; return "Vou esperar uma proposta melhor (salário menor enquanto isso)."; } },
   ]},
 { id:"ev_sport_retire", emoji:"👟", title:"Pendurar as chuteiras?", age:[14,80], weight:0, cond:()=> isAthlete(),
-  text:c=> c.forced ? "O corpo não aguenta mais o alto nível. É hora de parar." : "Seu corpo dá sinais de cansaço. Os clubes oferecem contratos menores.",
+  text:c=> c.forced ? "O corpo não aguenta mais o alto nível. Chegou a hora de parar." : "Seu corpo dá sinais de cansaço. Os clubes oferecem contratos menores.",
   speech:()=> say("Foi uma carreira linda, mas todo mundo tem seu tempo."),
   choices:c=>[
     ...(c.forced ? [] : [{ label:"💪 Jogar mais uma temporada", run:()=>{ S.job.contract = 1; S.job.contractMult = Math.max(0.5, num(S.job.contractMult,1)*0.75); return "Mais um ano. Pelo amor ao esporte."; } }]),
     { label:"📋 Aposentar e virar técnico(a)", run:()=>{ S.flags.exAthlete = true; achieve("retiredpro", "Aposentadoria do esporte profissional"); return hireDirect("coach", S.job.level >= 2 ? 1 : 0); } },
     { label:"🎙️ Aposentar e virar comentarista", run:()=>{ S.flags.exAthlete = true; return hireDirect("commentator", P().fame > 40 ? 1 : 0); } },
     { label:"🔎 Aposentar e virar olheiro(a)", run:()=>{ S.flags.exAthlete = true; return hireDirect("scout", 0); } },
-    { label:"🏖️ Só aposentar", run:()=>{ S.flags.exAthlete = true; endJob("Aposentadoria esportiva"); log("👟 Encerrei minha carreira de atleta.", "milestone"); return "Fim de uma era."; } },
+    { label:"🏖️ Só aposentar", run:()=>{ S.flags.exAthlete = true; endJob("Aposentadoria esportiva"); log("👟 Encerrei minha carreira de atleta.", "milestone"); return "Pendurei as chuteiras."; } },
   ]},
 );
 /* Exposição de trabalho adulto: relações, emprego formal e reputação. */
@@ -3680,13 +3776,21 @@ function adultExposure(owned, mult = 1){
    mercado de colecionáveis.
    ===================================================================== */
 EVENTS.push(
-{ id:"ev_dark_awakening", emoji:"🌑", title:"Algo mudou em você", age:[18,90], weight:0, cond:()=> !dark().active && !inPrison(),
-  speech:()=> "Você não sentiu culpa. Sentiu… calma. Isso deveria te assustar.",
-  text:()=> "Depois do que aconteceu, uma voz fria passou a te acompanhar. O que fazer com ela?",
+{ id:"ev_dark_question", emoji:"🪞", title:"Diante do espelho", age:[18,120], weight:0, cond:()=> !dark().active && dark().answer !== "yes" && !inPrison(),
+  speech:()=> `Já são ${num(S.stats.kills)}. Seja honesto(a) com você mesmo(a).`,
+  text:()=> `Você já tirou ${num(S.stats.kills)} vidas. Na hora, o coração não disparou. Você está gostando disso?`,
   choices:()=>[
-    { label:"⚖️ Canalizar com um código: só quem escapou da justiça", hint:"abre o lado sombrio · impulso, suspeita e pistas", run:()=> awakenDark("code").msg },
-    { label:"🩸 Sem código, sem limites", hint:"karma despenca", run:()=> awakenDark("none").msg },
-    { label:"🧠 Procurar ajuda e enterrar isso", run:()=>{ addStress(-8); P().karma = clamp(P().karma + 6); return "Comecei terapia. A voz ficou mais baixa."; } },
+    { label:"🖤 Sim. É a única hora em que me sinto vivo(a).", hint:"abre um caminho escuro", run:()=>{ answerDark("yes"); return "Pela primeira vez, você não fugiu da resposta."; } },
+    { label:"😔 Não. Isso me assombra todas as noites.", run:()=>{ answerDark("no"); return "Você jurou para si mesmo(a) que foi a última vez."; } },
+    { label:"🧠 Não sei. Vou procurar ajuda.", run:()=>{ answerDark("unsure"); addStress(-6); P().karma = clamp(P().karma + 5); return "Marquei uma consulta com uma psicóloga. Não contei tudo, mas comecei."; } },
+  ]},
+{ id:"ev_dark_awakening", emoji:"🌑", title:"Sem volta", age:[18,90], weight:0, cond:()=> !dark().active && dark().answer === "yes" && !inPrison(),
+  speech:()=> "Você não sentiu culpa. Sentiu calma. Já não dá para fingir que foi acidente.",
+  text:()=> "Você matou de novo depois de admitir que gostava. Agora existe um padrão — e você sabe disso.",
+  choices:()=>[
+    { label:"⚖️ Seguir com um código: só quem escapou da justiça", hint:"libera o lado sombrio: impulso, suspeita e pistas", run:()=> awakenDark("code").msg },
+    { label:"🩸 Seguir sem código nenhum", hint:"karma despenca", run:()=> awakenDark("none").msg },
+    { label:"🛑 Parar enquanto ainda dá", run:()=>{ const D = dark(); D.answer = "no"; D.after = 0; D.askAgainAt = num(S.stats.kills) + 4; addStress(8); return "Você jogou fora o que guardava daquelas noites. Por enquanto, chega."; } },
   ]},
 { id:"ev_dark_urge", emoji:"🌘", title:"O impulso", age:[18,120], weight:0, cond:()=> dark().active && !inPrison(),
   speech:()=> say(pick(["Respira. Ninguém pode perceber.","Já faz tempo demais…","Sorria no trabalho. Só mais um dia."])),
@@ -4038,7 +4142,7 @@ function thoughtContext(){
   if (S.job && chance(0.5)) return "work";
   return p.stats.happiness > 65 ? "happy" : "work";
 }
-function currentThought(){ const ctx = thoughtContext(); return say(stablePick(DATA.thoughts[ctx] || DATA.thoughts.happy, ctx)); }
+function currentThought(){ const ctx = thoughtContext(); return gtx(say(stablePick(DATA.thoughts[ctx] || DATA.thoughts.happy, ctx))); }
 
 /* Comentário de alguém próximo (balão secundário na aba Vida). */
 function npcComment(){
@@ -4054,6 +4158,29 @@ function npcComment(){
   return { who: r.first, uid: r.uid, text: say(stablePick(DATA.npcLines[key], key + r.uid).replace("{me}", P().first)) };
 }
 function approachLine(kind){ return say(pick(DATA.approachLines[kind] || [""])); }
+
+/* ---------- Gênero no texto: "Fui preso(a)" → "Fui presa" ----------
+   gtx() troca as marcações "(a)" pela forma do gênero do personagem.
+   gtxPlayer() só faz isso nas frases que falam DO personagem (1ª pessoa
+   ou "Você…"), para não errar o gênero de outras pessoas citadas. */
+function gtx(text, g){
+  if (!text || typeof text !== "string" || text.indexOf("(") < 0) return text;
+  const F = (g || (S && S.player && S.player.gender)) === "F";
+  return text
+    .replace(/(\p{L}+)ão\(ã\)/gu, (m, a) => a + (F ? "ã" : "ão"))
+    .replace(/(\p{L}+)os\(as\)/gu, (m, a) => a + (F ? "as" : "os"))
+    .replace(/(\p{L}+)o\(a\)/gu, (m, a) => a + (F ? "a" : "o"))
+    .replace(/(\p{L}+)(or|ês)\(a\)/gu, (m, a, b) => a + b + (F ? "a" : ""))
+    .replace(/(\p{L}+)e\(a\)/gu, (m, a) => a + (F ? "a" : "e"))
+    .replace(/(?<!\p{L})([Uu])m\(a\)/gu, (m, u) => u + (F ? "ma" : "m"))
+    .replace(/(?<!\p{L})seu\(sua\)/gu, F ? "sua" : "seu")
+    .replace(/(?<!\p{L})(d?)ele\(a\)/gu, (m, d) => d + (F ? "ela" : "ele"));
+}
+const SELF_SENTENCE = /^[^\p{L}]*(?:Fui|Fiquei|Estou|Estava|Sou|Era|Me |Meu|Minha|Comecei|Virei|Nasci|Casei|Perdi|Ganhei|Consegui|Cumpri|Larguei|Pedi|Saí|Tenho|Você|Agora você|Agora sou|Eu |Entrei|Voltei|Fugi|Escapei|Levei|Acordei|Apaguei|Despistei|Matei|Admiti|Continuo|Recomecei|Desisti|Fiz|Passei|Sobrevivi|Cansei|Parei|Fechei|Encarei|Joguei|Estudei|Treinei|Prefiro|Não sou|Já sou|Seja )/u;
+function gtxPlayer(text){
+  if (!text || typeof text !== "string" || text.indexOf("(") < 0) return text;
+  return text.split(/(?<=[.!?…])\s+/).map(s => SELF_SENTENCE.test(s) ? gtx(s) : s).join(" ");
+}
 </script>
 <script>/* src/systems/aging.js */
 "use strict";
@@ -4170,10 +4297,9 @@ function planPremium(id = S.health.plan){
   return priceOf(pl.cost * (1 + Math.max(0, P().age - 35) * 0.035) * (1 + chronic * 0.25));
 }
 /* Quanto do custo de saúde o jogador paga (menores: pais cobrem parte). */
-function selfPayShare(){
-  if (P().age >= 18 || !parents().length) return 1;
-  return classOf().uninsured;
-}
+/* Quanto do custo médico sai do bolso do personagem. Menor de idade: nada
+   (pais ou responsáveis pagam; família pobre usa a rede pública). */
+function selfPayShare(){ return minor() ? 0 : 1; }
 function treatmentCost(il, tierId = il.tier){
   const d = byId(DATA.illnesses, il.id), t = byId(DATA.treatments, tierId);
   const cov = tierId === "public" ? 0 : effectivePlan().coverage;
@@ -4285,6 +4411,7 @@ function treatIllness(id, tierId){
   const il = S.illnesses.find(i => i.id === id), t = byId(DATA.treatments, tierId);
   if (!il || !il.diagnosed) return R(false, "Doença não diagnosticada.");
   if (t.minStage && il.stage < t.minStage) return R(false, `Disponível apenas a partir do estágio ${DATA.stages[t.minStage].name}.`);
+  if (minor() && clsBand() === 0 && tierId !== "public") return R(false, "Sua família não tem como pagar hospital particular. Só a rede pública.");
   const d = byId(DATA.illnesses, id), cost = treatmentCost(il, tierId);
   if (tierId !== "public" && !canAfford(cost)) return R(false, `Precisa de ${fmt(cost)} para o primeiro ano.`);
   il.treated = true; il.tier = tierId; emit("hospital");
@@ -4295,7 +4422,7 @@ function treatIllness(id, tierId){
 }
 function stopTreatment(id){ const il = S.illnesses.find(i=>i.id===id); if (!il) return R(false,"?"); il.treated = false; il.tier = null; log(`Interrompi o tratamento de ${byId(DATA.illnesses,id).name}.`, "bad"); return R(true, "Tratamento interrompido."); }
 function setHealthPlan(id){
-  if (P().age < 18) return R(false, "Menores usam o plano dos pais.");
+  if (minor()) return R(false, "Menores de idade usam o plano dos pais.");
   S.health.plan = id; const pl = byId(DATA.healthPlans, id);
   log(id === "none" ? "Cancelei meu plano de saúde." : `Contratei: ${pl.name} (${fmt(planPremium(id))}/ano).`, "");
   return R(true, id === "none" ? "Plano cancelado." : `${pl.name} ativo.`);
@@ -4532,7 +4659,8 @@ function endJob(reason){
 /* ---------- Carreira ---------- */
 function jobEligibility(c){
   const E = S.edu, a = P().age, st = P().stats;
-  if (a < Math.max(18, c.minAge||0)) return `Idade mínima: ${Math.max(18, c.minAge||0)}`;
+  if (a < Math.max(ageOf("adult"), c.minAge||0)) return `Idade mínima: ${Math.max(ageOf("adult"), c.minAge||0)}`;
+  if (c.needsCar && a < ageOf("drive")) return ageReason("drive");
   if (inPrison()) return "Você está preso(a)";
   if (S.wanted && !S.wanted.fakeId) return "Foragido(a): qualquer checagem de documentos te entrega";
   if (S.wanted && (c.exam || c.elected || c.cleanRecord)) return "Identidade falsa não passa em concurso/checagem de antecedentes";
@@ -4580,7 +4708,7 @@ function applyJob(id, iv = {}){
 
 function applyPartTime(id){
   const j = byId(DATA.partTime, id);
-  if (P().age < j.minAge) return R(false, `Idade mínima ${j.minAge}.`);
+  if (P().age < Math.max(j.minAge, ageOf("work"))) return R(false, P().age >= j.minAge ? ageReason("work") : `Idade mínima: ${j.minAge}.`);
   if (j.minInt && P().stats.intelligence < j.minInt) return R(false, "Inteligência insuficiente.");
   if (S.job) return R(false, "Você já tem emprego em tempo integral.");
   if (inPrison()) return R(false, "Você está preso(a).");
@@ -5501,8 +5629,10 @@ function prisonYear(){
 
 /* security: "mínima" | "média" | "máxima" (padrão: pela pena). Foragido(a)
    preso(a) por outro crime soma o restante da pena antiga. */
-function sendToPrison(years, crime, security){
+function sendToPrison(years, crime, security, opts = {}){
   years = Math.max(1, Math.round(years));
+  // flagrante/mandado: a polícia chega, e o jogador pode tentar fugir (minigame de rua)
+  if (opts.chase && canChase()) return startChase(years, crime, security);
   if (S.wanted){ years += num(S.wanted.remaining) + 2; crime += " + fuga anterior"; security = "máxima"; S.wanted = null; }
   years = Math.min(99, years);
   if (S.fight) S.fight.next = null; // torneio não continua atrás das grades
@@ -5552,8 +5682,9 @@ function commitCrime(id){
   }
   let yrs = rint(...c.years) + (S.record.length ? 1 : 0) + (S.parole>0 ? 2 : 0);
   if (yrs <= 0){ const fine = priceOf(rint(200,2000)); addMoney(-fine); S.record.push({ crime:c.name, age:P().age, years:0 }); log(`🚓 Pego(a) em flagrante (${c.name}). Multa de ${fmt(fine)} e ficha suja.`, "bad"); return R(false, `Pego(a)! Multa de ${fmt(fine)}.`); }
-  sendToPrison(yrs, c.name.toLowerCase());
-  return R(false, `Pego(a)! Condenado(a) a ${yrs} ano(s).`);
+  sendToPrison(yrs, c.name.toLowerCase(), undefined, { chase:true });
+  if (S.escape?.mode === "street") return R(false, "🚨 Deu errado e a polícia chegou! Fuja ou se renda.");
+  return R(false, `Fui pego(a). Condenado(a) a ${yrs} ano(s).`);
 }
 
 /* Reabilitação criminal: 5 anos sem crimes + advogado → chance de limpar o antecedente mais antigo. */
@@ -5593,7 +5724,7 @@ function commitCyber(c){
     return R(true, `Deu certo! ${fmt(g)} em dinheiro SUJO — precisa lavar. Rastro estimado: ${Math.round(trace*100)}%.`);
   }
   S.cyberSkill = clamp(num(S.cyberSkill) + 1);
-  if (P().age >= 18 && chance(trace * 1.3)){ addNoto(c.noto); emit("siren"); const y = rint(...c.years); sendToPrison(Math.max(1, y), c.name.toLowerCase()); return R(false, `O banco rastreou o IP na hora. Preso(a) por ${c.name.toLowerCase()}: ${y} ano(s).`); }
+  if (P().age >= 18 && chance(trace * 1.3)){ addNoto(c.noto); emit("siren"); const y = rint(...c.years); sendToPrison(Math.max(1, y), c.name.toLowerCase(), undefined, { chase:true }); return R(false, S.escape?.mode === "street" ? "🚨 O banco rastreou o IP e a polícia está na sua porta! Fuja ou se renda." : `O banco rastreou o IP na hora. Preso(a) por ${c.name.toLowerCase()}: ${y} ano(s).`); }
   log(`💻 Tentei ${c.name.toLowerCase()} e não rolou. Perdi ${fmt(prep)} de preparação.`, "bad");
   return R(false, `Não deu certo. Perdi os ${fmt(prep)} da preparação.`);
 }
@@ -5855,7 +5986,7 @@ function trainArt(id, intense = false){
 function unlockNews(id, before){
   const after = mastery(id), d = byId(DATA.martialArts, id); let msg = "";
   for (const mv of DATA.moves.filter(m => m.art === id && m.req > before && m.req <= after)){
-    log(`${d.emoji} Aprendi um golpe novo: ${mv.name}.`, "good"); msg += ` 🆕 Golpe desbloqueado: ${mv.name}!`;
+    log(`${d.emoji} Aprendi um golpe novo: ${mv.name}.`, "good"); msg += ` 🆕 Aprendi um golpe novo: ${mv.name}!`;
   }
   if (rankIdx(after) > rankIdx(before)){
     const r = d.ranks[rankIdx(after)]; log(`${d.emoji} Graduação em ${d.name}: ${r}.`, "milestone"); msg += ` 🎖️ Nova graduação: ${r}.`;
@@ -6124,7 +6255,7 @@ function endFight(result){
   let s = { win:`Venci a briga contra ${name}.`, lose:`Perdi a briga para ${name}.`, draw:`A briga com ${name} terminou empatada.`, fled:"Fugi da briga.", surrender:"Me rendi." }[F.result];
   if (F.kind === "tournament") s = F.result === "win" ? `Vitória sobre ${name}!` : `Derrota para ${name}.`;
   if (dmgTaken > 0) s += injure(Math.round(dmgTaken * 0.4), F.kind === "tournament" ? "Uma luta oficial" : "Uma briga", 0.2);
-  if (F.myOutcome === "coma"){ s += injure(rint(18, 30), "O coma após a briga", 0.6); const bill = priceOf(rint(2000, 8000)) * (1 - effectivePlan().coverage); addMoney(-Math.round(bill)); s += ` Conta do hospital: ${fmt(Math.round(bill))}.`; }
+  if (F.myOutcome === "coma"){ s += injure(rint(18, 30), "O coma após a briga", 0.6); s += payBill(priceOf(rint(2000, 8000)) * (1 - effectivePlan().coverage), "a conta do hospital"); }
   if (F.myOutcome === "death") S.flags.forcedDeath = F.kind === "tournament" ? "lesão cerebral em uma luta oficial" : `ferimentos em uma briga com ${name}`;
   F.summary = s + (F.summary ? " " + F.summary : "");
   (FIGHT_AFTER[F.kind] || (()=>{}))(F);
@@ -6179,7 +6310,8 @@ function assaultCharge(F){
   addNoto(8); P().karma = clamp(P().karma - (selfDef ? 2 : 10));
   if (selfDef){ F.summary += " A polícia registrou como legítima defesa."; return; }
   if (P().age >= 18 && chance(0.3 + (F.kind === "street" ? 0.1 : 0))){
-    const y = rint(1, 4); sendToPrison(y, "lesão corporal grave"); F.summary += ` Fui preso(a) por lesão corporal grave (${y} ano(s)).`;
+    const y = rint(1, 4); sendToPrison(y, "lesão corporal grave", undefined, { chase:true });
+    F.summary += S.escape?.mode === "street" ? " Alguém chamou a polícia. A viatura acabou de virar a esquina." : ` Fui preso(a) por lesão corporal grave (${y} ano(s)).`;
   } else F.summary += " Ninguém me denunciou… ainda.";
 }
 
@@ -6229,13 +6361,13 @@ function registerKill(F){
     else { const y = rint(1, 3); sendToPrison(y, "excesso de legítima defesa"); F.summary += ` O júri viu excesso: ${y} ano(s).`; }
   }
   else if (P().age >= 12 && chance(pCaught * 0.55)){
-    sendToPrison(years, label, years >= 12 ? "máxima" : "média");
-    F.summary += ` Fui preso(a) em flagrante por ${label}: ${years >= 99 ? "PRISÃO PERPÉTUA" : years + " anos"}.`;
+    sendToPrison(years, label, years >= 12 ? "máxima" : "média", { chase:true });
+    F.summary += S.escape?.mode === "street" ? ` A polícia chegou antes de eu sair dali. Se me pegarem: ${label}.` : ` Fui preso(a) em flagrante por ${label}: ${years >= 99 ? "PRISÃO PERPÉTUA" : years + " anos"}.`;
   } else {
     schedule("homicideCase", rint(1, 3), { name, label, years, p: pCaught }, `A polícia investiga a morte de ${name}.`);
     F.summary += " Saí antes da polícia chegar. Mas a investigação vai começar.";
   }
-  if (S.dark && !S.dark.active && P().age >= 18 && chance(0.4)) enqueue("ev_dark_awakening");
+  darkOnKill(); // caminho gradual do lado sombrio (systems/dark.js)
   // família / aliados da vítima
   if (chance(F.kind === "rival" ? 0.8 : 0.45)) schedule("victimRevenge", rint(1, 5), { name, kin: F.kind === "rival" ? "a facção dele" : pick(["o irmão","o primo","o filho","a irmã","o melhor amigo"]) }, `A família de ${name} não vai esquecer.`);
 }
@@ -6360,8 +6492,8 @@ function solveStage(st){
 }
 
 /* ---------- Gerador ---------- */
-function genStage(d, idx, total){
-  const P0 = escapeParams(d), W = P0.size, H = P0.size;
+function genStage(d, idx, total, P0 = escapeParams(d), names = DATA.escapeStages){
+  const W = P0.size, H = P0.size;
   for (let attempt = 0; attempt < 60; attempt++){
     const g = Array.from({ length:H }, (_, y) => Array.from({ length:W }, (_, x) => (x === 0 || y === 0 || x === W-1 || y === H-1) ? "#" : "."));
     // blocos de parede e segmentos (corredores)
@@ -6371,7 +6503,7 @@ function genStage(d, idx, total){
     }
     const start = [1, H-2], exit = [W-2, 0];
     g[H-2][1] = "."; g[H-2][2] = "."; g[H-3][1] = "."; g[1][W-2] = "."; g[1][W-3] = ".";
-    const st = { w:W, h:H, grid: g.map(r => r.join("")), start, exit, key:null, guards:[], cams:[], range:P0.range, name: DATA.escapeStages[Math.min(idx, 2)] };
+    const st = { w:W, h:H, grid: g.map(r => r.join("")), start, exit, key:null, guards:[], cams:[], range:P0.range, name: names[Math.min(idx, names.length - 1)] };
     st.grid[0] = st.grid[0].slice(0, exit[0]) + "X" + st.grid[0].slice(exit[0]+1);
     // distâncias a partir da cela (sem guardas) — garante conectividade
     const dist = {}, bq = [start]; dist[start.join(",")] = 0;
@@ -6439,7 +6571,7 @@ function escapeMove(dir){
   if (!escFloor(st, nx, ny)) return "🧱 Parede.";
   if (nx === st.exit[0] && ny === st.exit[1] && !E.key) return "🔒 A porta exige o cartão-chave.";
   const k = nx + "," + ny;
-  if (visionAt(st, E.t).has(k) || visionAt(st, E.t + 1).has(k)){ E.pos = [nx, ny]; return failEscape("👮 Um guarda te viu!"); }
+  if (visionAt(st, E.t).has(k) || visionAt(st, E.t + 1).has(k)){ E.pos = [nx, ny]; return failEscape(E.mode === "street" ? "🚓 Um policial te viu e te derrubou." : "👮 Um guarda te viu!"); }
   E.pos = [nx, ny]; E.t++;
   emit("step");
   if (st.key && nx === st.key[0] && ny === st.key[1] && !E.key){ E.key = true; emit("pickup"); }
@@ -6447,13 +6579,18 @@ function escapeMove(dir){
     if (E.stage + 1 < E.stages.length){ E.stage++; E.t = 0; E.pos = [...escStage().start]; E.key = !escStage().key; emit("stage"); return `✅ ${st.name} superado! Próxima etapa: ${escStage().name}.`; }
     return succeedEscape();
   }
-  if (E.t >= st.limit) return failEscape("⏰ A contagem de presos começou — sua cela estava vazia.");
+  if (E.t >= st.limit) return failEscape(E.mode === "street" ? "⏰ As viaturas fecharam todas as saídas." : "⏰ A contagem de presos começou e sua cela estava vazia.");
   return dir === "wait" ? "⏳ Esperei imóvel nas sombras." : "";
 }
-function abortEscape(){ const E = S.escape; if (!E || E.stage || E.t) return false; S.escape = null; if (S.prison) S.prison.escTriedAge = null; return true; }
+function abortEscape(){
+  const E = S.escape; if (!E) return false;
+  if (E.mode === "street"){ surrenderChase(); return "surrender"; } // na rua, render-se vale a qualquer momento
+  if (E.stage || E.t) return false; S.escape = null; if (S.prison) S.prison.escTriedAge = null; return true;
+}
 
 function succeedEscape(){
-  const E = S.escape, pr = S.prison; E.over = true; E.result = "ok";
+  const E = S.escape; if (E.mode === "street") return succeedChase();
+  const pr = S.prison; E.over = true; E.result = "ok";
   S.wanted = { since:P().age, remaining: pr.years, crime: pr.crime, fakeId:false, country:P().country, years:0, security: pr.security };
   S.prison = null; S.stats.escapes = num(S.stats.escapes) + 1;
   addNoto(40); addStat("happiness", 15); addStress(10);
@@ -6464,7 +6601,8 @@ function succeedEscape(){
   return E.msg = "🏃 Você está livre! A partir de agora, é foragido(a): a polícia vai te procurar.";
 }
 function failEscape(why){
-  const E = S.escape, pr = S.prison; E.over = true; E.result = "fail";
+  const E = S.escape; if (E.mode === "street") return failChase(why);
+  const pr = S.prison; E.over = true; E.result = "fail";
   const add = rint(2, 4), hurt = rint(10, 20);
   pr.years += add; pr.escBlock = 2; pr.escAttempts = num(pr.escAttempts) + 1;
   if (pr.security === "mínima") pr.security = "média"; else if (pr.security === "média" && chance(0.5)) pr.security = "máxima";
@@ -6478,7 +6616,7 @@ function closeEscape(){ const E = S.escape; if (!E) return ""; const m = E.msg; 
 /* Bots e saves recarregados: resolve sem UI (chance cai com a dificuldade). */
 function autoEscape(){
   const E = S.escape; if (!E) return;
-  if (!E.over){ if (chance(0.62 - E.d*0.06)) succeedEscape(); else failEscape("👮 Pego(a) no corredor."); }
+  if (!E.over){ if (chance((E.mode === "street" ? 0.74 - E.d*0.07 : 0.62 - E.d*0.06))) succeedEscape(); else failEscape(E.mode === "street" ? "🚓 Cercado(a) num beco." : "👮 Pego(a) no corredor."); }
   closeEscape();
 }
 
@@ -6493,7 +6631,7 @@ function fugitiveYear(){
   if (chance(recaptureChance())){
     const y = W.remaining + rint(2, 5), crime = W.crime; S.wanted = null;
     log("🚔 Fui recapturado(a) depois de anos foragido(a).", "bad");
-    sendToPrison(y, `fuga da prisão (${crime})`, "máxima");
+    sendToPrison(y, `fuga da prisão (${crime})`, "máxima", { chase:true });
     return;
   }
   if (W.years >= 15){ S.wanted = null; log("📁 Meu caso de foragido(a) esfriou e saiu da lista de prioridades.", "good"); return; }
@@ -6507,6 +6645,61 @@ function buyFakeId(){
   if (chance(0.15)){ addNoto(10); return R(false, "O falsário era informante. Perdi o dinheiro e a polícia sabe meu novo nome."); }
   W.fakeId = true; log("🪪 Comprei uma identidade falsa.", "bad");
   return R(true, "Nova identidade. Empregos comuns voltam a ser possíveis (concursos, não).");
+}
+
+/* =====================================================================
+   PERSEGUIÇÃO POLICIAL — quando a polícia chega para prender (flagrante,
+   rastreio, mandado), abre o mesmo minigame em tema de rua.
+   Dificuldade d (0–7) = pena/3 + notoriedade alta + policiamento eficiente
+   do país − proteção de organização forte. Crimes leves: grade 7×7,
+   1 policial e bastante folga; crimes graves: mais policiais e câmeras.
+   Fugiu → escapa da abordagem (e pode ficar procurado se foi reconhecido);
+   pego → preso com +1 ano por resistência; rendeu-se → preso sem extra.
+   ===================================================================== */
+DATA.chasePlaces = ["Becos do bairro", "Feira lotada", "Estação de metrô", "Canteiro de obras", "Galerias do centro"];
+function chaseParams(d){
+  return { size: Math.min(10, 7 + Math.floor(d/2)), guards: Math.min(5, 1 + Math.floor(d*0.7)), cams: Math.min(3, Math.floor(d/2)),
+           range: d >= 5 ? 4 : 3, slack: Math.max(3, 10 - d), stages: 1, keyFrom: 999 };
+}
+function chaseDifficulty(years){
+  return Math.max(0, Math.min(7, Math.round(years/3) + (P().notoriety > 60 ? 1 : 0) + (country().crime < 0.8 ? 1 : 0) - (S.org && S.org.rank >= 2 ? 1 : 0)));
+}
+/* Pode virar perseguição? (só adulto, livre, sem outro minigame aberto) */
+function canChase(){ return !!S && P().alive && !inPrison() && !S.escape && P().age >= ageOf("adult"); }
+function startChase(years, crime, security){
+  const d = chaseDifficulty(years), place = pick(DATA.chasePlaces);
+  const st = genStage(d, 0, 1, chaseParams(d), [place]);
+  S.escape = { mode:"street", d, stages:[st], stage:0, t:0, pos:[...st.start], key:true, over:false, result:null, msg:"", pending:{ years, crime, security } };
+  addStress(12); emit("siren");
+  log(`🚓 A polícia chegou para me prender por ${crime}.`, "bad", ["crime"]);
+  return S.escape;
+}
+function succeedChase(){
+  const E = S.escape, pd = E.pending; E.over = true; E.result = "ok";
+  const seen = chance(Math.min(0.85, 0.3 + E.d*0.08));   // alguém te reconheceu?
+  addNoto(8 + E.d*2); addStress(8); S.stats.chases = num(S.stats.chases) + 1;
+  if (seen){
+    if (S.wanted){ S.wanted.remaining = Math.min(99, S.wanted.remaining + pd.years); S.wanted.crime += ` e ${pd.crime}`; }
+    else S.wanted = { since:P().age, remaining: pd.years, crime: pd.crime, fakeId:false, country:P().country, years:0, security: pd.security || "média" };
+    log(`🏃 Fugi da polícia, mas me reconheceram: agora sou procurado(a) por ${pd.crime}.`, "bad", ["crime"]);
+    emit("escape");
+    return E.msg = `Você despistou a polícia, mas a câmera pegou seu rosto. Agora há um mandado de prisão contra você (${pd.crime}).`;
+  }
+  log(`🏃 Despistei a polícia. Ninguém conseguiu me identificar.`, "good", ["crime"]);
+  emit("escape");
+  return E.msg = "Você sumiu no meio do povo. Ninguém conseguiu te identificar, mas a polícia não vai esquecer o caso.";
+}
+function failChase(why){
+  const E = S.escape, pd = E.pending; E.over = true; E.result = "fail";
+  const seq = injure(rint(3, 9), "A imobilização na abordagem", 0.1);
+  sendToPrison(pd.years + 1, `${pd.crime} e resistência à prisão`, pd.security);
+  emit("caught");
+  return E.msg = `${why} Fui algemado(a). Resistir rendeu mais 1 ano: ${pd.years + 1} ano(s) por ${pd.crime}.${seq}`;
+}
+function surrenderChase(){
+  const E = S.escape, pd = E.pending; E.over = true; E.result = "surrender";
+  sendToPrison(pd.years, pd.crime, pd.security);
+  return E.msg = `Levantei as mãos e me entreguei. ${pd.years} ano(s) por ${pd.crime}, sem pena extra.`;
 }
 </script>
 <script>/* src/systems/prison.js */
@@ -6944,7 +7137,8 @@ const gig = () => S.gig;
 
 function gigBlock(d){
   const p = P(), rq = d.req || {};
-  if (p.age < d.minAge) return `Idade mínima ${d.minAge}`;
+  const need = Math.max(d.minAge, d.adult ? ageOf("adult") : 0, d.id === "rideshare" ? ageOf("drive") : 0, ageOf("work"));
+  if (p.age < need) return `Idade mínima: ${need}`;
   if (inPrison()) return "Você está preso(a)";
   if (rq.car && (!S.vehicles.length || !S.flags.license)) return "Precisa de carro e carteira";
   if (rq.int && p.stats.intelligence < rq.int) return `Inteligência ${rq.int}`;
@@ -7226,7 +7420,7 @@ function buyWeapon(id){
   const price = priceOf(d.price) * (d.legal === "illegal" ? rfloat(1, 1.4) : 1);
   if (!canAfford(price)) return R(false, `Custa ${fmt(price)}.`);
   addMoney(-Math.round(price));
-  if (d.legal === "illegal"){ addNoto(4); if (chance(0.08)){ S.record.push({ crime:"porte ilegal de arma", age:P().age, years:0 }); sendToPrison(rint(1, 3), "porte ilegal de arma"); return R(false, "O vendedor era informante. Preso(a) em flagrante."); } }
+  if (d.legal === "illegal"){ addNoto(4); if (chance(0.08)){ sendToPrison(rint(1, 3), "porte ilegal de arma", undefined, { chase:true }); return R(false, S.escape?.mode === "street" ? "🚨 O vendedor era informante e a polícia apareceu! Fuja ou se renda." : "O vendedor era informante. Preso(a) em flagrante."); } }
   arsenal().push({ uid:uid(), id, registered: d.legal === "license" });
   log(`${d.emoji} Comprei: ${d.name}.`, d.legal === "illegal" ? "bad" : "");
   return R(true, `${d.name} adquirida. Ela aparece como golpe nas brigas.`);
@@ -7280,6 +7474,23 @@ const dark = () => (S.dark ||= { active:false, code:"code", urge:0, heat:0, clue
 function darkCover(){
   const kids = children().filter(c => c.age < 18).length;
   return clamp(20 + (S.job ? 25 : 0) + (partner() ? 15 : 0) + kids*5 + (S.edu.school ? 10 : 0) - (S.org ? 10 : 0) - P().notoriety/3 - (P().stress > 70 ? 10 : 0));
+}
+/* ---------- Caminho gradual ----------
+   Etapa 1: depois de 3 mortes na vida, a pergunta "você está gostando?"
+            (se disser não, ela pode voltar a cada 3 mortes a mais).
+   Etapa 2: quem disse SIM e mata mais 2 vezes chega ao ponto sem volta
+            (ev_dark_awakening) — e ainda pode escolher parar ali. */
+const DARK_FIRST_ASK = 3, DARK_AFTER_YES = 2;
+function darkOnKill(){
+  const D = dark(); if (D.active || P().age < ageOf("adult")) return;
+  const k = num(S.stats.kills);
+  if (D.answer === "yes"){ D.after = num(D.after) + 1; if (D.after >= DARK_AFTER_YES) enqueue("ev_dark_awakening"); return; }
+  if (k >= DARK_FIRST_ASK && k >= num(D.askAgainAt, DARK_FIRST_ASK)) enqueue("ev_dark_question");
+}
+function answerDark(ans){
+  const D = dark(), k = num(S.stats.kills);
+  if (ans === "yes"){ D.answer = "yes"; D.after = 0; addStress(-4); P().karma = clamp(P().karma - 10); remember("Admiti para mim mesmo(a): gosto do que sinto quando faço isso.", "pending"); }
+  else { D.answer = "no"; D.askAgainAt = k + 3; if (ans === "no"){ addStat("happiness", -6); addStress(10); } }
 }
 function awakenDark(code){
   const D = dark(); if (D.active) return R(false, "Já desperto.");
@@ -7399,7 +7610,7 @@ function darkYear(){
   if (D.heat >= 85 && D.clues >= 3 && chance(0.25 + D.clues*0.06)){
     log("🚨 A força-tarefa juntou as pistas. Fui preso(a) por assassinatos em série.", "bad", ["crime"]);
     const pen = DATA.penal[P().country] || { max:40, life:false };
-    sendToPrison(pen.life ? 99 : pen.max, "assassinatos em série", "máxima");
+    sendToPrison(pen.life ? 99 : pen.max, "assassinatos em série", "máxima", { chase:true });
     D.heat = 30; D.caught = true; addFame(30); addNoto(50);
   }
 }
@@ -7408,7 +7619,7 @@ function darkYear(){
 "use strict";
 /* systems/activities.js */
 
-const ACT_LIMIT = 6; // "energia" por ano para atividades pessoais
+const ACT_LIMIT = 12; // "energia" por ano para atividades pessoais
 
 const R = (ok, msg) => ({ ok, msg });
 
@@ -7416,7 +7627,7 @@ function spendEnergy(){ if (S.activitiesThisYear >= ACT_LIMIT) return false; S.a
 
 function canAfford(v){ return S.money >= v; }
 
-const adult = () => P().age >= 18;
+const adult = () => P().age >= ageOf("adult"); // maioridade do país atual
 
 /* ---------- Atividades pessoais ----------
    Retornos decrescentes: a n-ésima repetição da mesma atividade no ano
@@ -7454,7 +7665,7 @@ const ACTIVITIES = [
   { id:"music", name:"Praticar música", emoji:"🎹", minAge:6, cost:100, desc:"+Talento musical", run:()=>{ P().talents.music = clamp(P().talents.music + sc(rint(2,6),"music")); return "Horas de ensaio." + fx({happiness:2}); } },
   { id:"acting", name:"Aulas de teatro", emoji:"🎭", minAge:6, cost:150, desc:"+Talento de atuação", run:()=>{ P().talents.acting = clamp(P().talents.acting + sc(rint(2,6),"acting")); return "Improvisos e monólogos." + fx({happiness:2}); } },
   { id:"train", name:"Treinar esporte", emoji:"🏃", minAge:6, cost:100, desc:"+Talento esportivo, exercício", run:()=>{ P().talents.sport = clamp(P().talents.sport + sc(rint(2,6),"train")); S.health.exercised = true; return "Treino puxado." + fx({health: sc(rint(1,3)*ageBody(),"train")}); } },
-  { id:"license", name:"Autoescola", emoji:"🪪", minAge:18, cost:400, desc:"Tirar a carteira", cond:()=>!S.flags.license, run:()=>{ if (chance(0.5 + P().stats.intelligence/250)){ S.flags.license = true; return "Passei na prova de direção! 🪪" + fx({happiness:6}); } return "Reprovei no exame de direção." + fx({happiness:-3}); } },
+  { id:"license", name:"Autoescola", emoji:"🪪", minAge:16, cost:400, desc:"Tirar a carteira", cond:()=>!S.flags.license, run:()=>{ if (chance(0.5 + P().stats.intelligence/250)){ S.flags.license = true; return "Passei na prova de direção! 🪪" + fx({happiness:6}); } return "Reprovei no exame de direção." + fx({happiness:-3}); } },
   { id:"lottery", name:"Loteria", emoji:"🎟️", minAge:18, cost:10, desc:"Chance minúscula", run:()=>{ S.addictions.gambling = clamp(S.addictions.gambling + 1); const r = rand(); if (r < 0.0004){ const w = wageOf(rint(2e6,4e7)); achieve("lottery","Ganhou na loteria"); return "GANHEI NA LOTERIA!!! 🤑" + fx({money:w, happiness:30}); } if (r < 0.03) return "Acertei a quadra." + fx({money:priceOf(rint(50,800))}); return "Não foi dessa vez."; } },
   { id:"casino", name:"Cassino", emoji:"🎰", minAge:18, cost:0, desc:"Aposte 10% do caixa (vicia)", run:()=>{ S.addictions.gambling = clamp(S.addictions.gambling + rint(3,6)); const bet = Math.max(0, Math.round(S.money*0.1)); if (!bet) return "Sem dinheiro para apostar."; return chance(0.46) ? "A sorte sorriu!" + fx({money:bet, happiness:6}) : "A casa sempre vence." + fx({money:-bet, happiness:-4}); } },
   { id:"volunteer", name:"Voluntariado", emoji:"🙌", minAge:12, cost:0, desc:"+Karma, +Reputação", run:()=>{ addRep(1); if (!S.flags.volRef && chance(0.25)){ S.flags.volRef = true; schedule("volunteerReference", rint(1,3)); } return "Ajudei quem precisava." + fx({happiness: sc(4,"volunteer"), karma:5}); } },
@@ -7462,15 +7673,18 @@ const ACTIVITIES = [
   { id:"social", name:"Postar nas redes", emoji:"📱", minAge:13, cost:0, desc:"+Fama (talvez)", run:()=>{ const viral = chance((0.04 + P().stats.looks/1000 + P().fame/400) * dim("social")); return viral ? "Meu post viralizou! 🔥" + fx({fame:rint(5,15), happiness:6}) : "Algumas curtidas." + fx({fame:rand()<0.5?1:0}); } },
 ];
 
+/* Regras de idade por país em algumas atividades. */
+const ACT_RULES = { party:"drink", casino:"gamble", lottery:"gamble", license:"drive", vacation:"adult", networking:"work" };
+function actMinAge(x){ const r = ACT_RULES[x.id]; return Math.max(x.minAge || 0, r ? ageOf(r) : 0); }
 function doActivity(id){
   const a = byId(ACTIVITIES, id);
-  if (P().age < a.minAge) return R(false, `Idade mínima: ${a.minAge}.`);
+  if (P().age < actMinAge(a)) return R(false, ACT_RULES[a.id] && P().age >= a.minAge ? ageReason(ACT_RULES[a.id]) : `Idade mínima: ${actMinAge(a)}.`);
   if (inPrison()) return R(false, "Você está preso(a).");
   if (a.cond && !a.cond()) return R(false, "Indisponível.");
   const cost = priceOf(a.cost);
-  if (cost && P().age >= 18 && !canAfford(cost)) return R(false, `Custa ${fmt(cost)}.`);
+  if (cost && adult() && !canAfford(cost)) return R(false, `Custa ${fmt(cost)}.`);
   if (!spendEnergy()) return R(false, "Você está exausto(a). Espere o próximo ano.");
-  if (cost && P().age >= 18) addMoney(-cost);
+  if (cost && adult()) addMoney(-cost); // menor de idade: os pais pagam
   const msg = a.run(); S.actCount[id] = num(S.actCount[id]) + 1;
   log(`${a.emoji} ${a.name}: ${msg}`, ""); sanitize();
   if (P().stats.health <= 0) die("complicações de saúde");
@@ -7640,7 +7854,7 @@ function lifeTitle(){
   if (S2.countries.length >= 3) opts.push([55, "Cidadão(ã) do Mundo"]);
   if (S.flags.bankrupt) opts.push([50, "Falido(a) Resiliente"]);
   if (!opts.length) opts.push([10, (S.hist?.happy/Math.max(1,S.hist?.n||1)) > 60 ? "Alma Feliz" : "Vida Comum"]);
-  return opts.sort((a,b)=>b[0]-a[0])[0][1];
+  return gtx(opts.sort((a,b)=>b[0]-a[0])[0][1]); // "Milionário(a)" → forma do gênero
 }
 /* Capítulos da vida para a linha do tempo ilustrada do legado. */
 function lifeChapters(){
@@ -7684,6 +7898,9 @@ function fx(o){
   return parts.length ? ` (${parts.join(", ")})` : "";
 }
 
+/* Despesa de evento: adulto paga (mostra o valor); menor de idade, os pais pagam. */
+function costFx(amount, what, extra = {}){ return (minor() ? payBill(amount, what) : fx({ money: -Math.round(amount) })) + fx(extra); }
+
 const EVENT_MAP = Object.fromEntries(EVENTS.map(e=>[e.id,e]));
 
 function enqueue(id, ctx){
@@ -7720,7 +7937,11 @@ function queueEvents(){
 function resolveEvent(i){
   const q = S.queue[0]; if (!q) return null;
   const ev = EVENT_MAP[q.id]; let res = "";
-  try { const ch = ev.choices(q.ctx)[i]; res = ch.run(q.ctx) || ""; log(`${ev.emoji} ${ev.title}: ${res}`, /−|perdi|demitid|pres|condenad/i.test(res) ? "bad" : "good"); }
+  try {
+    const ch = ev.choices(q.ctx)[i]; res = ch.run(q.ctx) || "";
+    if (S.escape?.mode === "street" && !S.escape.over && !S.escape.t) res = `${res.replace(/\s*(Fui preso|Fui pego|Condenad)[^.]*\./gi, "")} 🚨 A polícia chegou para te prender. Fuja ou se renda!`.trim();
+    log(`${ev.emoji} ${ev.title}: ${res}`, /−|perdi|demitid|pres|condenad|polícia/i.test(res) ? "bad" : "good");
+  }
   catch(e){ console.error(e); res = "(evento ignorado)"; }
   S.queue.shift();
   sanitize();
@@ -7762,6 +7983,14 @@ function takeSnapshot(){
   return { ...p.stats, stress:p.stress, rep:p.reputation, fame:p.fame, vitality:p.vitality,
            money:S.money, nw:netWorth(), credit:S.credit };
 }
+/* Ordem fixa do tick anual (cada um lê o que os anteriores produziram). */
+const YEAR_STEPS = [
+  ["economia", economyYear], ["envelhecimento", agingYear], ["escola", schoolYear], ["carreira", careerYear], ["esporte", sportsYear],
+  ["autônomo", gigYear], ["lutas", martialYear], ["negócios", businessYear], ["ativos", assetsYear], ["coleção", collectYear],
+  ["finanças", Y => financeYear(Y)], ["organização", orgYear], ["relações", relationshipsYear], ["identidade", identityYear],
+  ["aparência", looksYear], ["pets", petsYear], ["saúde", healthYear], ["prisão", prisonYear], ["foragido", fugitiveYear],
+  ["lado sombrio", darkYear], ["consequências", consequencesYear], ["marcos", milestoneYear],
+];
 function ageUp(){
   // briga/fuga deixada pela metade (save recarregado): resolve antes de avançar
   if (S.flags.forcedDeath && P().alive){ const c = S.flags.forcedDeath; delete S.flags.forcedDeath; die(c); return true; }
@@ -7771,12 +8000,12 @@ function ageUp(){
   const before = S.snap || takeSnapshot();
   const Y = S.yearSummary = { income:0, taxes:0, expenses:0, lines:[] };
   P().age++;
-  economyYear(); // inflação, salários e fase do ciclo
   S.activitiesThisYear = 0; S.actCount = {};
-
-  agingYear(); schoolYear(); careerYear(); sportsYear(); gigYear(); martialYear(); businessYear(); assetsYear(); collectYear();
-  financeYear(Y); orgYear(); relationshipsYear(); identityYear(); looksYear(); petsYear(); healthYear(); prisonYear(); fugitiveYear(); darkYear();
-  consequencesYear(); milestoneYear();
+  // cada subsistema roda isolado: um erro num deles é registrado e o ano segue
+  for (const [name, fn] of YEAR_STEPS){
+    try { fn(Y); }
+    catch(e){ if (typeof Safety !== "undefined") Safety.report(e, "ano:" + name); else console.error(name, e); }
+  }
   S.hist = S.hist || { happy:0, health:0, n:0 };
   S.hist.happy += P().stats.happiness; S.hist.health += P().stats.health; S.hist.n++;
 
@@ -7834,7 +8063,7 @@ const REDUCED = () => typeof matchMedia === "function" && matchMedia("(prefers-r
 let TAB = "life", LOGFILTER = "all", LOGALL = false, LOGQUERY = "", TAB_CHANGED = true;
 try { TAB = localStorage.getItem("claudilife.tab") || "life"; } catch(e){}
 
-function toast(msg){ const t = $("#toast"); if (!t) return; t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("show"), 2800); }
+function toast(msg){ msg = typeof gtxPlayer === "function" ? gtxPlayer(String(msg)) : msg; const t = $("#toast"); if (!t) return; t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("show"), 2800); }
 /* Avatar: emoji por idade/gênero + tom de pele escolhido no hub. */
 function avatarFor(age, gender, tone = ""){ const f = gender === "F"; return (age<3?"👶":age<13?(f?"👧":"👦"):age<18?"🧑":age<60?(f?"👩":"👨"):(f?"👵":"👴")) + (tone || ""); }
 function avatar(){ if (!P().alive) return "🪦"; if (inPrison()) return "🧑‍⚖️"; return avatarFor(P().age, P().gender, S.look?.tone); }
@@ -8152,7 +8381,7 @@ function pageTop(smooth = false){
 const BOOT_STEPS = ["Inicializando o motor de simulação…","Gerando árvore genealógica…","Sorteando país, cidade e família…","Calculando a economia global…","Carregando academias e submundo…","Treinando os guardas do presídio…","Afinando os efeitos sonoros…","Preparando seu destino…"];
 function showLoading(steps, work, done, opts = {}){
   const el = $("#loading");
-  if (!el || /selftest|balance|demo|acttest/.test(location.search)){ work && work(); done && done(); return; }
+  if (!el || /selftest|balance|demo|acttest|fuzz=/.test(location.search)){ work && work(); done && done(); return; }
   const tips = DATA.tips.slice().sort(() => Math.random() - 0.5); let tipI = 0;
   el.innerHTML = `<div class="ld-inner">
       <div class="ld-logo"><span class="ld-mark">🧬</span><b>Claudi<span>Life</span></b></div>
@@ -8316,7 +8545,8 @@ function render(){
    com busca e filtros por categoria. */
 const LOG_FILTERS = [["all","Tudo"],["milestone","Marcos"],["good","Positivos"],["bad","Negativos"],["work","Trabalho"],["money","Dinheiro"],["love","Amor"],["health","Saúde"],["school","Estudos"],["crime","Crime"]];
 
-function occupation(){
+function occupation(){ return gtx(occupationRaw()); }
+function occupationRaw(){
   const p = P();
   if (inPrison()) return `⛓️ Preso(a) — ${S.prison.life ? "prisão perpétua" : S.prison.years + " ano(s) restantes"} (${esc(S.prison.crime)})`;
   if (S.wanted) return `🚨 Foragido(a) da Justiça${S.wanted.fakeId ? " · identidade falsa" : ""}`;
@@ -8451,7 +8681,7 @@ function viewCareer(){
   h += `</div>`;
 
   if (a >= 14 && !S.job && !inPrison()){
-    h += `<div class="card"><h2>🧃 Meio período</h2>${DATA.partTime.map(j=>`<div class="row"><div class="grow"><div class="t">${j.name}</div><div class="s">${fmt(wageOf(j.s))}/ano · ${j.minAge}+ anos</div></div><button class="btn" ${a<j.minAge||S.partTime===j.id?"disabled":""} onclick="UI.do(()=>applyPartTime('${j.id}'))">Candidatar</button></div>`).join("")}</div>`;
+    h += `<div class="card"><h2>🧃 Meio período</h2>${DATA.partTime.map(j=>`<div class="row"><div class="grow"><div class="t">${j.name}</div><div class="s">${fmt(wageOf(j.s))}/ano · ${j.minAge}+ anos</div></div><button class="btn" ${a<Math.max(j.minAge, ageOf("work"))||S.partTime===j.id?"disabled":""} onclick="UI.do(()=>applyPartTime('${j.id}'))">Candidatar</button></div>`).join("")}</div>`;
   }
   h += athleteCard() + gigCard();
   if (a >= 18 && !inPrison()){
@@ -8655,10 +8885,10 @@ const PLACES = [
   { id:"library",  ic:"📚", name:"Biblioteca",          acts:["read","meditate"] },
   { id:"bank",     ic:"🏦", name:"Banco / Corretora",   ui:[["Investimentos, crédito e dívidas","UI.close();UI.tab('assets')"]], minAge:18 },
   { id:"notary",   ic:"📜", name:"Cartório",            ui:[["Fazer testamento","UI.close();UI.willDialog()"]], minAge:18 },
-  { id:"dealer",   ic:"🚘", name:"Concessionária",      ui:[["Ver garagem e modelos","UI.close();UI.tab('assets')"]], acts:["license"], minAge:18 },
+  { id:"dealer",   ic:"🚘", name:"Concessionária",      ui:[["Ver garagem e modelos","UI.close();UI.tab('assets')"]], acts:["license"], minAge:16, rule:"drive" },
   { id:"realty",   ic:"🏘️", name:"Imobiliária",         ui:[["Comprar/alugar imóveis (qualquer país)","UI.close();UI.tab('assets')"]], minAge:18 },
   { id:"court",    ic:"⚖️", name:"Delegacia / Tribunal",ui:[["Pedir reabilitação criminal (limpar ficha)","UI.close();UI.do(expungeRecord)"]], minAge:18 },
-  { id:"night",    ic:"🎰", name:"Cassino / Clube noturno", acts:["casino","party","lottery"], minAge:18 },
+  { id:"night",    ic:"🎰", name:"Cassino / Clube noturno", acts:["casino","party","lottery"], minAge:18, rule:"drink" },
   { id:"airport",  ic:"✈️", name:"Aeroporto",           acts:["vacation"], ui:[["Emigrar para outro país","UI.close();UI.tab('assets')"]], minAge:18 },
   { id:"mall",     ic:"🛍️", name:"Shopping",            acts:["shopping","social","hobby"], minAge:10 },
   { id:"ngo",      ic:"🙌", name:"ONG / Comunidade",    acts:["volunteer","networking"] },
@@ -8669,8 +8899,8 @@ const PLACES = [
 function viewActs(){
   const a = P().age, energy = ACT_LIMIT - S.activitiesThisYear;
   let h = `<div class="card hero"><h2>🗺️ ${esc(P().city)} <span class="tag">⚡ ${energy}/${ACT_LIMIT} de energia</span></h2>
-    <div class="grid2">${PLACES.filter(p => a >= (p.minAge||0)).map(p=>`<button class="action" onclick="UI.place('${p.id}')"><b>${p.ic} ${p.name}</b><span>${[...(p.acts||[]).map(id=>byId(ACTIVITIES,id)?.name).filter(Boolean), ...(p.ui||[]).map(u=>u[0])].slice(0,3).join(" · ")}</span></button>`).join("")}</div></div>`;
-  const list = ACTIVITIES.filter(x => a >= x.minAge && (!x.cond || x.cond()));
+    <div class="grid2">${PLACES.filter(p => a >= Math.max(p.minAge||0, p.rule ? ageOf(p.rule) : 0)).map(p=>`<button class="action" onclick="UI.place('${p.id}')"><b>${p.ic} ${p.name}</b><span>${[...(p.acts||[]).map(id=>byId(ACTIVITIES,id)?.name).filter(Boolean), ...(p.ui||[]).map(u=>u[0])].slice(0,3).join(" · ")}</span></button>`).join("")}</div></div>`;
+  const list = ACTIVITIES.filter(x => a >= actMinAge(x) && (!x.cond || x.cond()));
   h += `<div class="card"><h2>🎯 Todas as atividades</h2><div class="oddsline" style="margin:-4px 0 10px">Repetir a mesma atividade no ano rende cada vez menos. Diversifique.</div>
     <div class="grid2">${list.map(x=>actButton(x, energy)).join("")}</div></div>`;
   h += `<div class="card"><h2>🎨 Talentos</h2>${bar("🎵 Música", P().talents.music, "var(--accent)")}${bar("🎭 Atuação", P().talents.acting, "var(--accent)")}${bar("🏅 Esporte", P().talents.sport, "var(--accent)")}
@@ -8681,7 +8911,7 @@ function viewActs(){
 }
 function actButton(x, energy){
   const a = P().age, n = num(S.actCount[x.id]), eff = Math.round(dim(x.id)*100);
-  return `<button class="action" ${energy<=0?"disabled":""} onclick="UI.do(()=>doActivity('${x.id}'))">${n?`<span class="odds ${eff>=60?"warn":"bad"}">${eff}%</span>`:""}<b>${x.emoji} ${x.name}</b><span>${x.desc}${x.cost&&a>=18?` · ${fmt(priceOf(x.cost))}`:""}</span></button>`;
+  return `<button class="action" ${energy<=0?"disabled":""} onclick="UI.do(()=>doActivity('${x.id}'))">${n?`<span class="odds ${eff>=60?"warn":"bad"}">${eff}%</span>`:""}<b>${x.emoji} ${x.name}</b><span>${x.desc}${x.cost&&adult()?` · ${fmt(priceOf(x.cost))}`:""}</span></button>`;
 }
 function crimeCard(energy){
   const a = P().age, O = S.org;
@@ -8781,8 +9011,8 @@ function showEvent(){
   const person = who ? npcCard(who, { revealed: !!q.ctx.revealed, known: !!known }) : "";
   const talk = speech ? bubble(speech, who ? who.first : ev.title, "left", who ? (who.gender==="F"?"👩":"👨") : ev.emoji) : "";
   if (!document.querySelector("#modalRoot .overlay:not(.closing)")) Sound.play("alert"); else Sound.play("bubble");
-  modal(`<div class="emoji">${ev.emoji}</div><h3>${esc(ev.title)}</h3>${person}${talk}<p>${esc(say(text))}</p>
-    <div class="choices">${choices.map((c,i)=>`<button onclick="UI.choose(${i})">${esc(c.label)}${c.hint?`<small>${esc(c.hint)}</small>`:""}</button>`).join("")}</div>
+  modal(`<div class="emoji">${ev.emoji}</div><h3>${esc(ev.title)}</h3>${person}${talk}<p>${esc(gtxPlayer(say(text)))}</p>
+    <div class="choices">${choices.map((c,i)=>`<button onclick="UI.choose(${i})">${esc(gtx(c.label))}${c.hint?`<small>${esc(gtxPlayer(c.hint))}</small>`:""}</button>`).join("")}</div>
     ${left ? `<div class="oddsline" style="margin-top:10px">+${left} acontecimento(s) neste ano</div>` : ""}`, { locked:true });
 }
 /* Resultado de uma escolha com os deltas causados por ela. */
@@ -8794,7 +9024,7 @@ function showResult(res, before){
   }
   const dm = after.money - before.money; if (dm) chips.push(chip(`💰 ${signed(dm, true)}`, dm > 0 ? "good" : "bad"));
   const more = validHead();
-  modal(`<div class="result">${esc(res)}</div>${chips.length ? `<div class="chips" style="margin-bottom:14px">${chips.join("")}</div>` : ""}
+  modal(`<div class="result">${esc(gtxPlayer(res))}</div>${chips.length ? `<div class="chips" style="margin-bottom:14px">${chips.join("")}</div>` : ""}
     <div class="choices"><button class="primary" onclick="UI.next()">${more ? "Próximo acontecimento →" : "Continuar"}</button></div>`, { locked:true });
 }
 </script>
@@ -8819,6 +9049,7 @@ const UI = {
     Sound.play("year"); floatDiff(before, takeSnapshot());
     if (!P().alive){ closeModal(); pageTop(); toast(`${P().first} faleceu aos ${P().age} anos.`); return; }
     yearBadge();
+    if (S.escape){ UI._mgBefore = before; return setTimeout(UI.escapeOpen, REDUCED() ? 0 : 380); } // a polícia chegou durante o ano
     if (S.queue.length) setTimeout(showEvent, REDUCED() ? 0 : 380); // deixa o selo do ano aparecer antes
   },
   choose(i){
@@ -8828,7 +9059,7 @@ const UI = {
     saveGame(true); render();
     // a escolha abriu uma briga ou uma fuga: o minigame assume e depois volta ao fluxo
     if (P().alive && (S.fight || S.escape)){ UI._mgBefore = before; return S.fight ? UI.fightOpen() : UI.escapeOpen(); }
-    if (!P().alive){ modal(`<div class="emoji">🕊️</div><h3>Fim da jornada</h3><div class="result">${esc(res)}</div><div class="choices"><button class="primary" onclick="UI.close();UI.tab('life')">Ver certidão</button></div>`); return; }
+    if (!P().alive){ modal(`<div class="emoji">🕊️</div><h3>${esc(P().first)} morreu</h3><div class="result">${esc(res)}</div><div class="choices"><button class="primary" onclick="UI.close();UI.tab('life')">Ver certidão</button></div>`); return; }
     showResult(res, before);
   },
   next(){ if (typeof Device !== "undefined" && !Device.guard()) return; showEvent(); },
@@ -8990,10 +9221,10 @@ const UI = {
 Object.assign(UI, {
   place(id){
     const p = PLACES.find(x=>x.id===id), a = P().age, energy = ACT_LIMIT - S.activitiesThisYear;
-    const acts = (p.acts||[]).map(i=>byId(ACTIVITIES,i)).filter(x => x && a >= x.minAge && (!x.cond || x.cond()));
+    const acts = (p.acts||[]).map(i=>byId(ACTIVITIES,i)).filter(x => x && a >= actMinAge(x) && (!x.cond || x.cond()));
     Sound.play("bubble");
     modal(`<div class="emoji">${p.ic}</div><h3>${p.name}</h3><p class="muted">${esc(P().city)} · energia ${energy}/${ACT_LIMIT}</p>
-      ${acts.length ? `<div class="grid2">${acts.map(x=>`<button class="action" ${energy<=0?"disabled":""} onclick="UI.close();UI.do(()=>doActivity('${x.id}'))"><b>${x.emoji} ${x.name}</b><span>${x.desc}${x.cost&&a>=18?` · ${fmt(priceOf(x.cost))}`:""}</span></button>`).join("")}</div>` : ""}
+      ${acts.length ? `<div class="grid2">${acts.map(x=>`<button class="action" ${energy<=0?"disabled":""} onclick="UI.close();UI.do(()=>doActivity('${x.id}'))"><b>${x.emoji} ${x.name}</b><span>${x.desc}${x.cost&&adult()?` · ${fmt(priceOf(x.cost))}`:""}</span></button>`).join("")}</div>` : ""}
       <div class="choices" style="margin-top:10px">${(p.ui||[]).map(([l,js])=>`<button onclick="${js}">${l}</button>`).join("")}<button onclick="UI.close()">Sair</button></div>`);
   },
   willDialog(){
@@ -9039,7 +9270,7 @@ function renderFight(hitWho){
     <div class="flog">${F.lines.slice(-5).map((l, i, a) => `<div class="${i === a.length - 1 ? "new" : ""}">${esc(say(l))}</div>`).join("")}</div>`;
   if (F.over){
     const icon = F.oppOutcome === "death" ? "☠️" : F.myOutcome === "death" ? "⚰️" : F.result === "win" ? "🏆" : F.result === "fled" ? "🏃" : F.result === "draw" ? "🤝" : "🤕";
-    h += `<div class="fight-end"><div class="emoji">${icon}</div><div class="result">${esc(say(F.summary))}</div>
+    h += `<div class="fight-end"><div class="emoji">${icon}</div><div class="result">${esc(gtxPlayer(say(F.summary)))}</div>
       <div class="choices"><button class="primary" onclick="UI.fightDone()">${F.next ? "Próxima luta →" : "Continuar"}</button></div></div></div>`;
     return h;
   }
@@ -9093,8 +9324,9 @@ Object.assign(UI, {
     if (typeof Device !== "undefined" && !Device.guard()) return;
     const before = UI._mgBefore || takeSnapshot();
     const res = closeFight(); sanitize(); saveGame(true); render();
-    if (!P().alive){ modal(`<div class="emoji">🕊️</div><h3>Fim da jornada</h3><div class="result">${esc(res || "")}</div><div class="choices"><button class="primary" onclick="UI.close();UI.tab('life')">Ver certidão</button></div>`); return; }
+    if (!P().alive){ modal(`<div class="emoji">🕊️</div><h3>${esc(P().first)} morreu</h3><div class="result">${esc(res || "")}</div><div class="choices"><button class="primary" onclick="UI.close();UI.tab('life')">Ver certidão</button></div>`); return; }
     if (S.fight) return UI.fightOpen(); // próxima luta do torneio
+    if (S.escape) return UI.escapeOpen(); // a polícia chegou depois da briga
     UI._mgBefore = null; showResult(res || "A luta acabou.", before);
   },
   martial(){ modal(`<div class="emoji">🥋</div><h3>Academia de Lutas</h3><p class="muted">Energia ${ACT_LIMIT - S.activitiesThisYear}/${ACT_LIMIT} · até ${MAX_ENROLL} modalidades ao mesmo tempo. Treino intenso rende quase o dobro, mas machuca.</p>${martialPanel()}<div class="choices" style="margin-top:8px"><button onclick="UI.close()">Sair</button></div>`); },
@@ -9144,13 +9376,13 @@ function renderEscape(){
   }
   const left = st.limit - E.t;
   let h = `<div class="escape ${E.over ? "done " + E.result : ""}">
-    <div class="fight-head"><h3>🏃 ${esc(st.name)}</h3>${chip(`Etapa ${E.stage + 1}/${E.stages.length}`, "neutral")}${chip(`Dificuldade ${E.d}/8`, E.d >= 5 ? "bad" : E.d >= 3 ? "warn" : "good")}
+    <div class="fight-head"><h3>${E.mode === "street" ? `🚓 Fuga da polícia · ${esc(st.name)}` : `🏃 ${esc(st.name)}`}</h3>${E.mode === "street" ? chip(`Se pegarem: ${E.pending.years} ano(s)`, "bad") : chip(`Etapa ${E.stage + 1}/${E.stages.length}`, "neutral")}${chip(`Dificuldade ${E.d}/${E.mode === "street" ? 7 : 8}`, E.d >= 5 ? "bad" : E.d >= 3 ? "warn" : "good")}
       ${chip(`⏱️ ${left} turno(s)`, left <= 3 ? "bad" : "neutral")}${st.key ? chip(E.key ? "🔑 cartão na mão" : "🔑 pegue o cartão", E.key ? "good" : "warn") : ""}</div>
     <div class="esc-board"><div class="escgrid" role="grid" aria-label="Mapa da fuga: toque numa casa vizinha para andar" style="grid-template-columns:repeat(${st.w},1fr)">${cells}</div>
-    <div class="esc-side"><div class="esc-legend"><span><i class="lg now"></i>vigiado agora</span><span><i class="lg next"></i>vigiado no próximo turno</span><span>👮 guarda (▲ direção)</span><span>📹 câmera (gira a cada 2 turnos)</span></div>
-    <div class="esc-msg" aria-live="polite">${esc(E.lastMsg || "Chegue à saída sem pisar em casas vermelhas ou laranjas.")}</div>`;
+    <div class="esc-side"><div class="esc-legend"><span><i class="lg now"></i>vigiado agora</span><span><i class="lg next"></i>vigiado no próximo turno</span><span>👮 ${E.mode === "street" ? "policial" : "guarda"} (▲ direção)</span><span>📹 câmera (gira a cada 2 turnos)</span></div>
+    <div class="esc-msg" aria-live="polite">${esc(E.lastMsg || (E.mode === "street" ? "Chegue à saída sem ser visto. Casa vermelha ou laranja = um policial te vê." : "Chegue à saída sem pisar em casas vermelhas ou laranjas."))}</div>`;
   if (E.over){
-    h += `</div></div><div class="fight-end"><div class="emoji">${E.result === "ok" ? "🏃‍♂️💨" : "🚨"}</div><div class="result">${esc(E.msg)}</div><div class="choices"><button class="primary" onclick="UI.escapeDone()">Continuar</button></div></div></div>`;
+    h += `</div></div><div class="fight-end"><div class="emoji">${E.result === "ok" ? "🏃‍♂️💨" : E.result === "surrender" ? "🙌" : "🚨"}</div><div class="result">${esc(gtxPlayer(E.msg))}</div><div class="choices"><button class="primary" onclick="UI.escapeDone()">Continuar</button></div></div></div>`;
     return h;
   }
   h += `<div class="dpad">
@@ -9158,7 +9390,8 @@ function renderEscape(){
       <button aria-label="Oeste" onclick="UI.escMove('W')">◀</button><button aria-label="Esperar" class="wait" onclick="UI.escMove('wait')">⏸</button><button aria-label="Leste" onclick="UI.escMove('E')">▶</button>
       <span></span><button aria-label="Sul" onclick="UI.escMove('S')">▼</button><span></span></div>
     <div class="oddsline" style="text-align:center">${Device.coarse() ? "Toque numa casa vizinha ou deslize o dedo na grade · toque em você para esperar" : "Setas/WASD ou clique numa casa vizinha · espaço para esperar"} · melhor rota: ${st.opt} turnos</div>
-    ${!E.stage && !E.t ? `<div class="choices" style="margin-top:8px"><button onclick="UI.escAbort()">Desistir e voltar para a cela</button></div>` : ""}</div></div></div>`;
+    ${E.mode === "street" ? `<div class="choices" style="margin-top:8px"><button onclick="UI.escAbort()">🙌 Me render<small>vai preso(a), mas sem a pena extra por resistência</small></button></div>`
+      : !E.stage && !E.t ? `<div class="choices" style="margin-top:8px"><button onclick="UI.escAbort()">Desistir e voltar para a cela</button></div>` : ""}</div></div></div>`;
   return h;
 }
 
@@ -9170,7 +9403,11 @@ Object.assign(UI, {
     UI.escapeOpen();
     if (E.over && E.result === "fail"){ const g = $(".escgrid"); if (g) restartClass(g, "shake"); }
   },
-  escAbort(){ if (abortEscape()){ closeModal(); toast("Você desistiu da fuga. Fica para outra hora."); saveGame(true); render(); } },
+  escAbort(){
+    const r = abortEscape();
+    if (r === "surrender"){ saveGame(true); render(); return UI.escapeOpen(); }   // rendeu-se: mostra o desfecho
+    if (r){ closeModal(); toast("Você desistiu da fuga. Fica para outra hora."); saveGame(true); render(); }
+  },
   escapeDone(){
     const before = UI._mgBefore || takeSnapshot(), msg = closeEscape();
     sanitize(); saveGame(true); render(); UI._mgBefore = null;
@@ -9269,7 +9506,7 @@ const HUB_VIEWS = {
     return `${hubBack()}<h2 class="hub-h">🏛️ Hall dos legados</h2>
       <div class="statgrid">${[["🧬 Vidas vividas", L.length],["🏆 Melhor pontuação", best ? `${best.score} · ${esc(best.name)}` : "—"],["⏳ Vida mais longa", oldest ? `${oldest.age} anos · ${esc(oldest.name)}` : "—"],["🎖️ Conquistas únicas", ach.length]]
         .map(([k,v]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("")}</div>
-      ${ach.length ? `<div class="section-label">Conquistas desbloqueadas</div><div class="chips">${ach.map(([t,n]) => chip(`${esc(t)}${n > 1 ? ` ×${n}` : ""}`, "good")).join("")}</div>` : ""}
+      ${ach.length ? `<div class="section-label">Conquistas</div><div class="chips">${ach.map(([t,n]) => chip(`${esc(t)}${n > 1 ? ` ×${n}` : ""}`, "good")).join("")}</div>` : ""}
       <div class="section-label">Vidas passadas</div>
       ${L.length ? L.map(l => `<div class="hub-slot"><div class="hs-av">${avatarFor(Math.min(l.age, 70), l.gender, l.tone)}</div><div class="grow"><div class="t">${esc(l.name)} <span class="muted s">${l.born}–${l.died}</span></div>
         <div class="s">🏅 ${esc(l.title || "—")} · ${l.score} pts · ${l.ach} conquista(s)</div><div class="s muted">${flagOf(l.country)} ${esc(l.cls || "")} · ${esc(l.cause || "")}</div></div></div>`).join("") : `<div class="empty">Quando um personagem morrer, a história dele fica aqui.</div>`}`;
@@ -9488,7 +9725,7 @@ function collectionCard(){
     <div class="choices" style="margin-top:8px"><button onclick="UI.collectShop()">🔨 Leilões, antiquários e mercado negro</button></div></div>`;
 }
 function darkPanel(){
-  const D = S.dark; if (!D || !D.active) return P().age >= 18 ? `<div class="row"><div class="grow"><div class="t">🌑 Lado sombrio</div><div class="s">Um caminho sem volta: caçar alvos, esconder pistas, viver uma vida dupla.</div></div><button class="btn sm danger" onclick="UI.darkIntro()">Despertar</button></div>` : "";
+  const D = S.dark; if (!D || !D.active) return D && D.answer === "yes" ? `<div class="oddsline">🌑 Você admitiu que gosta disso. Faltam ${Math.max(0, DARK_AFTER_YES - num(D.after))} morte(s) para não ter mais volta.</div>` : ""; // só aparece pelo caminho gradual
   const why = huntBlock();
   return `${label(`🌑 Lado sombrio · ${D.code === "code" ? "com código" : "sem código"} · ${D.kills} vítima(s)`)}
     <div class="bars">${bar("Impulso", D.urge, "var(--accent-2)")}${bar("Suspeita policial", D.heat, "var(--bad)")}${bar("Disfarce", darkCover(), "var(--good)")}${bar("Discrição", D.stealth, "var(--info)")}</div>
@@ -9521,11 +9758,6 @@ Object.assign(UI, {
       ${DATA.armory.filter(d => black ? d.legal === "illegal" : d.legal !== "illegal").map(d => armoryRow(d, black)).join("")}
       ${arsenal().length ? `${label("Meu arsenal")}${arsenal().map(w => { const d = byId(DATA.armory, w.id); return `<div class="row"><div class="grow s">${d.emoji} ${d.name}${w.registered ? " · registrada em seu nome" : ""}</div><button class="btn sm" onclick="UI.close();UI.do(()=>discardWeapon('${w.uid}'))">Descartar</button></div>`; }).join("")}` : ""}
       <div class="choices" style="margin-top:10px"><button onclick="UI.close()">Fechar</button></div>`);
-  },
-  darkIntro(){
-    modal(`<div class="emoji">🌑</div><h3>O lado sombrio</h3><p>Você passará a ter <b>impulso</b> (cresce todo ano), <b>suspeita policial</b> e <b>pistas</b>. Uma vida "normal" (emprego, família) é o seu disfarce. Se a força-tarefa juntar provas: pena máxima.</p>
-      <div class="choices"><button class="danger" onclick="UI.close();UI.do(()=>awakenDark('code'))">⚖️ Com código: só quem escapou da justiça</button>
-      <button class="danger" onclick="UI.close();UI.do(()=>awakenDark('none'))">🩸 Sem código</button><button onclick="UI.close()">Não. Melhor não.</button></div>`);
   },
   hunt(){
     const why = huntBlock(); if (why){ toast(why); return; }
@@ -9572,7 +9804,7 @@ const TUTORIAL = [
   { ic:"⏩", t:"Avance o tempo", b:"Cada toque em <b>Envelhecer 1 ano</b> simula um ano inteiro: salário, contas, saúde, relações e eventos. Não há volta — pense antes." },
   { ic:"📊", t:"Atributos e dinheiro", b:"<b>Saúde, felicidade, inteligência e aparência</b> ficam no topo. Estresse alto adoece; dívida derruba o crédito. Veja o caixa do ano na aba <b>Vida</b> e o patrimônio em <b>Bens</b>." },
   { ic:"💬", t:"Decisões e abordagens", b:"Eventos e pessoas que se aproximam sempre pedem uma escolha: <b>aceitar, recusar, negociar, investigar ou ignorar</b>. Investigar gasta energia e revela quem a pessoa é." },
-  { ic:"💼", t:"Trabalhe e invista", b:"Na aba <b>Carreira</b>: estudo, emprego, entrevistas e trabalho autônomo. Em <b>Bens</b>: imóveis, investimentos, coleção. Em <b>Ações</b>: os lugares da cidade (6 de energia por ano)." },
+  { ic:"💼", t:"Trabalhe e invista", b:"Na aba <b>Carreira</b>: estudo, emprego, entrevistas e trabalho autônomo. Em <b>Bens</b>: imóveis, investimentos, coleção. Em <b>Ações</b>: os lugares da cidade (12 de energia por ano)." },
   { ic:"⚠️", t:"Consequências e riscos", b:"Escolhas voltam anos depois (aba <b>Vida → Consequências</b>). Crime, brigas e golpes dão dinheiro rápido, mas trazem polícia, inimigos e prisão. Boa vida!" },
 ];
 const tutorialSkipped = () => { try { return localStorage.getItem("claudilife.tutorialOff") === "1"; } catch(e){ return false; } };
@@ -9602,6 +9834,135 @@ Object.assign(UI, {
   },
 });
 </script>
+<script>/* src/ui/safety.js */
+"use strict";
+/* =====================================================================
+   ui/safety.js — REDE DE SEGURANÇA contra travamento e save corrompido.
+
+   1. Transação por ação: toda função de UI (clique) guarda um retrato do
+      estado antes. Se der erro no meio, o estado VOLTA ao retrato — nada
+      fica pela metade — e o jogador segue jogando.
+   2. Erros fora das ações (handlers soltos, timers) caem no tratador
+      global: se o estado ficou inválido, volta ao último estado bom.
+   3. Save só grava estado que passa na checagem; o save anterior fica
+      como backup (.bak) e é usado se o principal estiver estragado.
+   4. Telas protegidas: se uma aba falhar ao desenhar, aparece um aviso
+      com botão de volta, nunca uma tela vazia.
+   O painel vermelho de erro só aparece com ?debug.
+   ===================================================================== */
+const Safety = (() => {
+  let lastGood = null, depth = 0, recovering = false;
+  const errors = [];
+  const DEBUG = /debug/.test(location.search);
+  function badNumbers(o, out = [], path = "S", d = 0){
+    if (out.length > 3 || d > 7) return out;
+    if (typeof o === "number" && !isFinite(o)) out.push(path);
+    else if (o && typeof o === "object") for (const k in o) badNumbers(o[k], out, path + "." + k, d + 1);
+    return out;
+  }
+  const sane = st => validateState(st) && Array.isArray(st.rels) && Array.isArray(st.log) && !badNumbers(st).length;
+  function snapshot(){ try { if (S && sane(S)) lastGood = JSON.stringify(S); } catch(e){} }
+  function report(e, where){
+    const msg = `${where}: ${e && e.message || e}`;
+    errors.push({ msg, stack: (e && e.stack || "").split("\n").slice(0, 3).join(" | "), t: Date.now() });
+    if (errors.length > 30) errors.shift();
+    console.error("[ClaudiLife]", msg, e);
+    if (DEBUG) showDebug(msg + "\n" + (e && e.stack || ""));
+  }
+  function showDebug(text){
+    const d = document.createElement("pre");
+    d.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:999;background:#b00020;color:#fff;padding:10px;font:12px monospace;white-space:pre-wrap;border-radius:8px;max-height:40vh;overflow:auto";
+    d.textContent = text; d.onclick = () => d.remove(); document.body.appendChild(d);
+  }
+  /* Volta para o último estado bom e redesenha. */
+  function restore(reason){
+    if (recovering) return; recovering = true;
+    try {
+      if (lastGood){ S = JSON.parse(lastGood); ensureState(S); sanitize(); }
+      else if (S){ ensureState(S); sanitize(); }
+      document.documentElement.classList.remove("lock");
+      try { closeModal(); } catch(e){ const r = document.getElementById("modalRoot"); if (r) r.innerHTML = ""; }
+      if (S) render();
+      toast(reason || "Algo deu errado nessa ação. Voltei o jogo para logo antes dela.");
+    } catch(e){ report(e, "restaurar"); }
+    recovering = false;
+  }
+  /* Executa uma ação como transação. */
+  function run(label, fn, self, args){
+    if (depth > 0) return fn.apply(self, args); // ação dentro de ação: a de fora já protege
+    depth++; snapshot();
+    try { const r = fn.apply(self, args); depth--; return r; }
+    catch(e){ depth--; report(e, label); restore(); return undefined; }
+  }
+  /* Protege todas as funções do objeto UI (cliques) de uma vez. */
+  function wrapUI(){
+    for (const k of Object.keys(UI)){
+      const f = UI[k]; if (typeof f !== "function" || f.__safe) continue;
+      const w = function(...a){ return run("UI." + k, f, this, a); }; w.__safe = true; UI[k] = w;
+    }
+  }
+  /* Erros fora das transações (handlers inline, timers, promessas). */
+  function onUncaught(e){
+    report(e.error || e.reason || e, "global");
+    if (!S) return;
+    if (!sane(S)) restore("Um erro deixou o jogo inconsistente. Voltei para o último ponto seguro.");
+    else { try { render(); } catch(_){} toast("Algo deu errado, mas seu jogo está salvo e seguro."); }
+  }
+  addEventListener("error", onUncaught);
+  addEventListener("unhandledrejection", onUncaught);
+  return { run, wrapUI, report, restore, snapshot, sane, badNumbers, errors, DEBUG };
+})();
+
+/* ---------- Save à prova de estado quebrado, com backup ---------- */
+{
+  const rawSave = saveGame;
+  saveGame = function(silent){
+    if (NO_PERSIST || !S) return false;
+    if (!Safety.sane(S)){
+      // nunca "conserta" zerando valores e grava por cima: recusa e volta ao último estado bom
+      Safety.report(new Error("estado inválido: " + (Safety.badNumbers(S).join(",") || "estrutura")), "saveGame");
+      Safety.restore("Detectei um valor inválido e voltei para o último ponto seguro. Nada foi perdido.");
+      return false;
+    }
+    try { // o save atual vira backup antes de ser substituído (1 por slot, renovado a cada ano de jogo)
+      const key = SLOT_PREFIX + CUR_SLOT, prev = CUR_SLOT && lsGet(key);
+      if (prev && lsGet(key + ".bakAge") !== String(P().age)){ lsSet(key + ".bak", prev); lsSet(key + ".bakAge", String(P().age)); }
+    } catch(e){}
+    const ok = rawSave(silent);
+    if (!ok){ // armazenamento cheio: encurta a linha do tempo e tenta de novo
+      try { if (S.log.length > 1200){ S.log = S.log.slice(-1200); return rawSave(silent); } } catch(e){}
+    }
+    return ok;
+  };
+  const rawLoad = loadGame;
+  loadGame = function(slotId){
+    try { if (rawLoad(slotId)) return true; } catch(e){ Safety.report(e, "loadGame"); }
+    // principal estragado: tenta o backup
+    const id = slotId || lsGet(CUR_SLOT_KEY) || listSlots()[0]?.id; if (!id) return false;
+    try {
+      const o = JSON.parse(lsGet(SLOT_PREFIX + id + ".bak") || "null");
+      if (o && validateState(o.state)){ S = migrate(o.state); sanitize(); CUR_SLOT = id; toast("O save estava danificado. Recuperei o backup do ano anterior."); return true; }
+    } catch(e){ Safety.report(e, "loadGame.bak"); }
+    return false;
+  };
+  const rawDelete = deleteSlot;
+  deleteSlot = function(id){ rawDelete(id); lsDel(SLOT_PREFIX + id + ".bak"); lsDel(SLOT_PREFIX + id + ".bakAge"); };
+}
+
+/* ---------- Telas protegidas ---------- */
+{
+  const rawRender = render;
+  render = function(){
+    try { rawRender(); }
+    catch(e){
+      Safety.report(e, "render:" + TAB);
+      const v = $("#view");
+      if (v) v.innerHTML = `<div class="card alert"><h2>⚠️ Esta tela não abriu</h2><p>Seu jogo continua salvo. Tente outra aba.</p><div class="choices"><button onclick="TAB='life';render()">Voltar para Vida</button></div></div>`;
+    }
+  };
+}
+Safety.wrapUI();
+</script>
 <!-- 8. ferramentas e boot -->
 <script>/* src/dev/selftest.js */
 "use strict";
@@ -9621,7 +9982,7 @@ function selfTest(lives=60){
     try {
       if (!inPrison() && a >= 12 && rand() < 0.05){ const k = rand(); if (k < 0.4) startGig(pick(DATA.gigs).id); else if (S.gig){ k < 0.6 ? promoteGig() : k < 0.8 ? practiceGig() : setGigPace(rint(0,2)); } }
       if (!inPrison() && a >= 18 && rand() < 0.03){ const k = rand(); if (k < 0.4) buyCollectible(pick(DATA.collectibles).id); else if (k < 0.55 && collection().length) sellCollectible(pick(collection()).uid); else if (k < 0.65 && collection().length) insureCollectible(pick(collection()).uid); else if (k < 0.85) buyWeapon(pick(DATA.armory).id); else applyGunLicense(); }
-      if (!inPrison() && a >= 18 && !dark().active && rand() < 0.004) awakenDark(chance(0.6) ? "code" : "none");
+      // lado sombrio: só pelo caminho gradual (mortes → pergunta → mais mortes)
       if (dark().active && rand() < 0.35) autoHunt();
       if (isAthlete() && rand() < 0.3) extraTraining();
       if (inPrison() && roll < 0.25) startEscape();
@@ -10002,7 +10363,7 @@ function sportsTest(n = 20){
       if (S.log.some(e => /Transferência|Renovei/.test(e.text) && e.age === P().age)) contracts++;
     }
     if (S.flags.exAthlete) retired++; if (S.job?.careerId === "coach" || S.jobHistory.some(j => /Técnico|Auxiliar técnico/.test(j.title))) coaches++;
-    titles += S.log.filter(e => /campeão\(ã\) com o/.test(e.text)).length; injuries += S.log.filter(e => /Lesão/.test(e.text)).length;
+    titles += S.log.filter(e => /campe(ão|ã) com o/.test(e.text)).length; injuries += S.log.filter(e => /Lesão/.test(e.text)).length;
   }
   const out = { carreiras:n, aposentados:retired, viraramTecnico:coaches, assinaturasDeContrato:contracts, titulos:titles, lesoes:injuries };
   out.OK = retired >= n*0.6 && contracts > n && titles > 0 && injuries > 0;
@@ -10026,17 +10387,180 @@ function darkTest(n = 40){
   return out;
 }
 </script>
+<script>/* src/dev/fuzz.js */
+"use strict";
+/* =====================================================================
+   dev/fuzz.js — "macaco" de interface (?fuzz=N): joga clicando em botões
+   REAIS da tela (modais, abas, ações, hub), avançando anos, e registra
+   todo erro — inclusive os que acontecem dentro de onclick, que o
+   selftest (que chama as funções direto) não enxerga.
+   Também confere, a cada passo, se o estado salvo continua válido.
+   ===================================================================== */
+function uiFuzz(steps = 1500, seed = 1){
+  const errors = [], seen = new Set();
+  const onErr = e => { const k = `${e.message} @${(e.filename||"").split("/").pop()}:${e.lineno}`; if (!seen.has(k)){ seen.add(k); errors.push(k + ` (passo ${step}, aba ${TAB}, ${lastClick})`); } };
+  addEventListener("error", onErr);
+  let step = 0, lastClick = "", lives = 0, years = 0, badSaves = 0;
+  const skip = /exportSave|hubimp|importSave|getElementById\('imp'\)|FS\.|location|deleteSlot|hubDelete/;
+  const safeStart = Safety.errors.length;
+  Device.guard = () => true; // cliques do teste são instantâneos: sem trava de toque duplo
+  S = null; newLife({ seed }); hideHub(); render(); lives++;
+  for (step = 0; step < steps; step++){
+    if (!S){ newLife({ seed: seed + step }); render(); lives++; }
+    if (!P().alive){ if (chance(0.5)){ const k = children().find(c => c.alive); if (k){ continueAsHeir(k.uid); render(); continue; } } S = null; newLife({ seed: seed + step }); hideHub(); render(); lives++; continue; }
+    const scope = document.querySelector("#modalRoot .overlay:not(.closing)") || (document.querySelector("#hub.on") ? document.querySelector("#hub") : document.querySelector("#app"));
+    const btns = [...scope.querySelectorAll("button:not([disabled]), .row.click, .ec.reach")].filter(b => !skip.test(b.getAttribute("onclick") || ""));
+    let target = null;
+    if (!document.querySelector("#modalRoot .overlay") && !document.querySelector("#hub.on") && chance(0.25)) target = document.querySelector("footer.age .big");
+    else if (!document.querySelector("#modalRoot .overlay") && chance(0.12)) target = pick([...document.querySelectorAll("nav.tabs button")]);
+    else target = btns.length ? pick(btns) : null;
+    if (!target){ closeModal(); hideHub(); render(); continue; }
+    lastClick = (target.getAttribute("onclick") || target.textContent || "").trim().slice(0, 60);
+    if (/trace/.test(location.search)) console.log(`FUZZ#${step} age=${P().age} tab=${TAB} modal=${!!document.querySelector("#modalRoot .overlay")} → ${lastClick}`);
+    const ageBefore = P().age;
+    try { target.click(); } catch(e){ onErr({ message:e.message, filename:"click", lineno:0 }); }
+    if (S && P().age > ageBefore) years += P().age - ageBefore;
+    // fecha telas que ficariam abertas para sempre (ex.: input de arquivo)
+    if (step % 40 === 39 && document.querySelector("#modalRoot .overlay") && !MODAL_LOCKED) closeModal();
+    if (S && (!validateState(S) || scanBad(S).length)) { badSaves++; if (badSaves < 4) errors.push(`estado inválido no passo ${step}: ${scanBad(S).join(",")}`); }
+  }
+  removeEventListener("error", onErr);
+  // erros que a rede de segurança capturou (e desfez) também contam como falha
+  for (const e of Safety.errors.slice(safeStart)) errors.push("capturado: " + e.msg + " | " + e.stack);
+  return { passos: steps, vidas: lives, anos: years, erros: errors.slice(0, 25), totalErros: errors.length, estadosInvalidos: badSaves, OK: !errors.length && !badSaves };
+}
+
+/* Saves com dados faltando (?unit=corruptTest): apaga um campo ao acaso de
+   um save "jogado", passa pelo caminho normal de carregamento (migrate) e
+   tenta jogar: desenhar todas as abas, abrir telas e avançar anos. */
+function corruptTest(trials = 160){
+  const fails = {}, seenErr = new Set(); let ok = 0;
+  const tops = ["player","edu","job","rels","prison","flags","health","world","stats","martial","look","identity","pets","org","properties","vehicles","loans","businesses","investments","scheduled","queue","cooldown","log","achievements","illnesses","addictions","gig","collection","arsenal","dark","wanted","escape","fight","yearSummary","lastYear","hist","lineage"];
+  for (let t = 0; t < trials; t++){
+    S = null; newLife({ seed: 7700 + t });
+    for (let y = 0; y < 10 + (t % 40); y++){ if (!P().alive) break; ageUp(); while (validHead()) resolveEvent(rint(0, EVENT_MAP[S.queue[0].id].choices(S.queue[0].ctx).length - 1)); if (S.fight) autoFight(); if (S.escape) autoEscape(); }
+    if (!P().alive) continue;
+    // corrompe: remove um campo de topo OU um subcampo, ou troca por null/lixo
+    const st = JSON.parse(JSON.stringify(S)), k = pick(tops), mode = t % 3;
+    let what = k;
+    if (mode === 0) delete st[k];
+    else if (mode === 1) st[k] = null;
+    else if (st[k] && typeof st[k] === "object" && !Array.isArray(st[k])){ const sub = pick(Object.keys(st[k])); if (sub){ delete st[k][sub]; what = `${k}.${sub}`; } }
+    else st[k] = "lixo";
+    try {
+      if (!validateState(st)) { ok++; continue; }          // o loader recusaria: ok (usa backup)
+      S = migrate(st); sanitize();
+      for (const tb of ["life","career","assets","rels","health","acts"]){ TAB = tb; render(); }
+      UI.menu(); closeModal(); if (S.rels[0]) { UI.person(S.rels[0].uid); closeModal(); }
+      for (let y = 0; y < 3 && P().alive; y++){ ageUp(); while (validHead()) resolveEvent(0); if (S.fight) autoFight(); if (S.escape) autoEscape(); }
+      render(); ok++;
+    } catch(e){
+      const key = `${what} (${["apagado","null","lixo/sub"][mode]}): ${e.message}`;
+      if (!seenErr.has(key)){ seenErr.add(key); fails[key] = (e.stack || "").split("\n")[1]?.trim(); }
+    }
+  }
+  S = null; closeModal();
+  return { tentativas: trials, sobreviveram: ok, falhas: Object.keys(fails).length, detalhes: fails, OK: !Object.keys(fails).length };
+}
+
+/* Rede de segurança (?unit=safetyTest): erro no meio de uma ação desfaz
+   tudo; save recusa estado quebrado; backup recupera save estragado. */
+function safetyTest(){
+  const out = {}, slot = CUR_SLOT, np = NO_PERSIST;
+  S = null; newLife({ seed: 4321 }); P().age = 30; S.money = 1000;
+  const errs0 = Safety.errors.length;
+  UI.do(() => { S.money = NaN; S.rels = "quebrado"; throw new Error("erro de teste no meio da ação"); });
+  out.rollbackDinheiro = S.money === 1000; out.rollbackRels = Array.isArray(S.rels); out.erroRegistrado = Safety.errors.length > errs0;
+  // save: grava um bom, tenta gravar um quebrado
+  NO_PERSIST = false; CUR_SLOT = "selftest_safety";
+  out.salvouBom = saveGame(true);
+  S.money = NaN; out.recusouQuebrado = saveGame(true) === false;
+  const stored = JSON.parse(lsGet(SLOT_PREFIX + CUR_SLOT)); out.saveIntacto = stored.state.money === 1000;
+  // principal estragado → backup
+  S.money = 1000; P().age = 31; saveGame(true);          // gera backup do ano anterior
+  lsSet(SLOT_PREFIX + CUR_SLOT, "{ isso não é json");
+  S = null; out.recuperouBackup = loadGame(CUR_SLOT) && P().first.length > 0;
+  deleteSlot("selftest_safety"); NO_PERSIST = np; CUR_SLOT = slot;
+  out.OK = Object.values(out).every(Boolean);
+  return out;
+}
+
+/* Perseguição policial (?unit=chaseTest): toda dificuldade tem saída;
+   render-se, ser pego e fugir dão o desfecho certo. */
+function chaseTest(){
+  const out = { porDificuldade:{} }; let solvable = 0;
+  S = null; newLife({ seed: 5150 }); P().age = 25;
+  for (let d = 0; d <= 7; d++){
+    let ok = 0;
+    for (let i = 0; i < 6; i++){ const st = genStage(d, 0, 1, chaseParams(d), ["teste"]); if (solveStage(st)) ok++; }
+    const P0 = chaseParams(d); out.porDificuldade[d] = `${ok}/6 solucionáveis · grade ${P0.size} · ${P0.guards} policial(is) · ${P0.cams} câmera(s) · folga ${P0.slack}`; solvable += ok;
+  }
+  const fresh = () => { S = null; newLife({ seed: 5151 }); P().age = 25; };
+  // 1) crime leve falha → perseguição fácil
+  fresh(); sendToPrison(1, "furto em loja", undefined, { chase:true });
+  out.virouPerseguicao = S.escape?.mode === "street" && !S.prison; out.dificuldadeFurto = S.escape?.d;
+  abortEscape(); out.rendeuPreso = !!S.prison && S.prison.years === 1; closeEscape();
+  // 2) pego → +1 ano
+  fresh(); sendToPrison(3, "roubo de carro", undefined, { chase:true }); failEscape("teste"); out.pegoMaisUmAno = S.prison?.years === 4; closeEscape();
+  // 3) fugiu → livre (talvez procurado)
+  fresh(); sendToPrison(20, "homicídio doloso", "máxima", { chase:true }); out.dificuldadeHomicidio = S.escape?.d; succeedEscape(); out.fugiuLivre = !S.prison; closeEscape();
+  // 4) jogando a solução da BFS pela mesma função da interface
+  fresh(); sendToPrison(6, "teste", undefined, { chase:true });
+  const sol = solveStage(escStage()); for (let j = 1; j < sol.path.length && !S.escape.over; j++){ const [x0,y0] = sol.path[j-1], [x1,y1] = sol.path[j]; escapeMove(x1>x0?"E":x1<x0?"W":y1>y0?"S":y1<y0?"N":"wait"); }
+  out.jogadaVenceu = S.escape?.result === "ok"; closeEscape();
+  // 5) menor de idade e quem já está preso não entram em perseguição
+  fresh(); P().age = 15; sendToPrison(1, "teste", undefined, { chase:true }); out.menorNaoPersegue = !S.escape; S.prison = null;
+  out.OK = solvable === 48 && out.virouPerseguicao && out.rendeuPreso && out.pegoMaisUmAno && out.fugiuLivre && out.jogadaVenceu && out.menorNaoPersegue && out.dificuldadeFurto < out.dificuldadeHomicidio;
+  return out;
+}
+/* Caminho gradual do lado sombrio (?unit=darkPathTest). */
+function darkPathTest(){
+  const out = {};
+  S = null; newLife({ seed: 6060 }); P().age = 30;
+  S.stats.kills = 2; darkOnKill(); out.semPerguntaCom2 = !S.queue.some(q => q.id === "ev_dark_question");
+  S.stats.kills = 3; darkOnKill(); out.perguntaCom3 = S.queue.some(q => q.id === "ev_dark_question");
+  S.queue = []; answerDark("no"); S.stats.kills = 4; darkOnKill(); out.naoRepeteLogo = !S.queue.some(q => q.id === "ev_dark_question");
+  S.stats.kills = 6; darkOnKill(); out.voltaDepois = S.queue.some(q => q.id === "ev_dark_question");
+  S.queue = []; answerDark("yes"); out.aindaInativo = !dark().active;
+  S.stats.kills = 7; darkOnKill(); out.semDespertarCom1 = !S.queue.some(q => q.id === "ev_dark_awakening");
+  S.stats.kills = 8; darkOnKill(); out.despertarCom2 = S.queue.some(q => q.id === "ev_dark_awakening");
+  out.semBotaoDireto = !darkPanel().includes("Despertar");
+  out.OK = Object.values(out).every(Boolean);
+  return out;
+}
+
+/* Idade × país × pais (?unit=ageTest). */
+function ageTest(){
+  const out = {}, life = (cid, age) => { S = null; newLife({ seed: 3030, country: cid }); P().age = age; S.money = priceOf(50000); return S; };
+  life("US", 19); out.eua19NaoBebe = doActivity("party").ok === false; out.eua19NaoAposta = doActivity("casino").ok === false;
+  life("BR", 19); out.br19Bebe = doActivity("party").ok === true;
+  life("US", 16); out.eua16Dirige = doActivity("license").ok !== false || /Passei|Reprovei/.test(S.log.slice(-1)[0]?.text || "");
+  life("BR", 16); out.br16NaoDirige = doActivity("license").ok === false;
+  life("PT", 14); out.pt14NaoTrabalha = applyPartTime("pt_babysit").ok === false;
+  life("BR", 14); out.br14Trabalha = applyPartTime("pt_babysit").ok === true;
+  // menor de idade: hospital e tratamento pagos pelos pais
+  life("BR", 12); const m0 = S.money; S.illnesses.push({ id:"flu", years:0, stage:2, diagnosed:true, treated:false, tier:null });
+  treatIllness("flu", "private"); medicalCheckup(); out.menorNaoPagaSaude = S.money === m0;
+  const bill = payBill(priceOf(5000), "a conta do hospital"); out.menorPaisPagam = S.money === m0 && /pais|família/i.test(bill);
+  life("BR", 30); const a0 = S.money; payBill(priceOf(5000), "a conta do hospital"); out.adultoPaga = S.money < a0;
+  life("BR", 10); S.player.cls = 0; S.illnesses.push({ id:"flu", years:0, stage:2, diagnosed:true, treated:false, tier:null });
+  out.pobreSoPublico = treatIllness("flu", "private").ok === false && treatIllness("flu", "public").ok !== false;
+  out.OK = Object.values(out).every(Boolean);
+  return out;
+}
+</script>
 <script>/* src/main.js */
 "use strict";
 /* main.js */
 
 (function boot(){
   try { const t = localStorage.getItem("claudilife.theme"); if (t) document.documentElement.dataset.theme = t; } catch(e){}
-  if (/selftest|balance|unit=|demo=|acttest|audit/.test(location.search)) NO_PERSIST = true; // testes nunca tocam nos saves reais
+  if (/selftest|balance|unit=|demo=|acttest|audit|fuzz=/.test(location.search)) NO_PERSIST = true; // testes nunca tocam nos saves reais
   if (/selftest/.test(location.search)){
     Sound.mute(true);
     const r = selfTest(60); r.emigration = emigrationTest(); r.heir = heirTest(); r.combat = combatTest(); r.escape = escapeTest();
-    r.v7 = { identity: identityTest().OK, prison: prisonTest().OK, pets: petTest(120).OK, classes: classTest(600).OK, bonds: bondsTest().OK, gigs: gigTest().OK, sports: sportsTest().OK, dark: darkTest(30).OK }; S = null;
+    r.v7 = { identity: identityTest().OK, prison: prisonTest().OK, pets: petTest(120).OK, classes: classTest(600).OK, bonds: bondsTest().OK, gigs: gigTest().OK, sports: sportsTest().OK, dark: darkTest(30).OK,
+      safety: safetyTest().OK, corrupt: corruptTest(80).OK, chase: chaseTest().OK, darkPath: darkPathTest().OK, ages: ageTest().OK }; S = null;
     document.body.innerHTML = `<pre id="selftest" style="white-space:pre-wrap;padding:16px;font:13px monospace">${esc(JSON.stringify({ ...r, ages: r.ages.join(","), scores: undefined, errors: r.errors.slice(0,15), bad: r.bad.slice(0,10), errorCount:r.errors.length, badCount:r.bad.length }, null, 1))}</pre>`;
     document.title = "SELFTEST " + (r.errors.length||r.bad.length||r.invariants||!r.emigration.OK||!r.heir.OK||!r.combat.OK||!r.escape.OK||Object.values(r.v7).some(x=>!x) ? "FAIL" : "OK");
     document.body.insertAdjacentHTML("afterbegin", `<h1 id="verdict" style="font:700 22px monospace;padding:12px 16px;margin:0">${document.title} · v7 ${esc(JSON.stringify(r.v7))} · emig ${r.emigration.OK} · herdeiro ${r.heir.OK} · combate ${r.combat.OK} · fuga ${r.escape.OK} · invariantes ${r.invariants||0}</h1>`);
@@ -10048,6 +10572,14 @@ function darkTest(n = 40){
     document.body.innerHTML = `<pre style="white-space:pre-wrap;padding:12px;font:12px monospace">${esc(JSON.stringify(r, null, 1))}</pre>`;
     document.body.insertAdjacentHTML("afterbegin", `<h1 style="font:700 18px monospace;padding:10px 12px;margin:0">${unit[1]} ${r.OK ? "OK" : "FAIL"}${r.erro ? " · " + esc(r.erro) : ""}</h1>`);
     document.title = unit[1] + (r.OK ? " OK" : " FAIL"); return;
+  }
+  const fz = location.search.match(/fuzz=(\d+)/); // dev: ?fuzz=1500&seed=3 — cliques aleatórios na interface real
+  if (fz){
+    NO_PERSIST = true; Sound.mute(true);
+    const seed = +(location.search.match(/seed=(\d+)/)||[0,1])[1];
+    (r => { document.documentElement.classList.remove("lock"); closeModal(); hideHub();
+      document.body.insertAdjacentHTML("beforeend", `<pre id="fuzz" style="position:fixed;inset:0;z-index:9999;background:#fff;color:#000;margin:0;white-space:pre-wrap;font:11px monospace;padding:8px;overflow:auto">FUZZ ${r.OK ? "OK" : "FAIL"}\n${esc(JSON.stringify(r, null, 1))}</pre>`); document.title = "FUZZ " + (r.OK ? "OK" : "FAIL"); })(uiFuzz(+fz[1], seed));
+    return;
   }
   if (/audit/.test(location.search)){ // dev: ?audit — estouros de largura e alvos de toque
     Sound.mute(true); const r = layoutAudit(); document.documentElement.classList.remove("lock");
@@ -10098,6 +10630,7 @@ function darkTest(n = 40){
       if (k === "gig"){ startGig("streamer"); S.gig.audience = 3400; TAB = "career"; render(); }
       if (k === "dark"){ S.money += priceOf(1e5); buyWeapon("tactical"); awakenDark("code"); dark().urge = 64; dark().heat = 38; dark().clues = 2; TAB = "acts"; render(); }
       if (k === "hunt"){ awakenDark("code"); UI.hunt(); }
+      if (k === "chase"){ P().age = Math.max(P().age, 20); sendToPrison(9, "roubo de carga", undefined, { chase:true }); render(); UI.escapeOpen(); }
       if (k === "tut"){ UI._tut = { i:2, mandatory:true }; UI.tutStep(); }
       if (k === "collect"){ S.money += priceOf(2e6); buyCollectible("fossil"); buyCollectible("watch"); buyCollectible("idol"); TAB = "assets"; render(); }
     }

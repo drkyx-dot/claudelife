@@ -61,7 +61,7 @@ EVENTS.push(
         S.stats.crimes++;
         if (chance(0.55 + S.crimeSkill/300)){ const g = priceOf(rint(3000, 15000)); S.dirty += g; S.stats.crimesOk++; S.stats.dirtyEarned += g; S.crimeSkill = clamp(S.crimeSkill+3); addNoto(6); emit("crime"); return `Serviço feito. ${fmt(g)} em dinheiro sujo na mão.`; }
         addNoto(10); emit("siren");
-        if (P().age >= 18 && chance(0.6)){ sendToPrison(rint(1,4), "participação em contrabando"); return "Era uma armadilha da polícia. Fui preso(a)."; }
+        if (P().age >= 18 && chance(0.6)){ sendToPrison(rint(1,4), "participação em contrabando", undefined, { chase:true }); return "Era uma armadilha da polícia."; }
         return "Deu ruim, larguei a carga e saí correndo." + fx({happiness:-5});
       } },
     investigateChoice("ev_crime_invite"),

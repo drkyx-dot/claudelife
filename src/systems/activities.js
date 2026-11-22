@@ -1,7 +1,7 @@
 "use strict";
 /* systems/activities.js */
 
-const ACT_LIMIT = 6; // "energia" por ano para atividades pessoais
+const ACT_LIMIT = 12; // "energia" por ano para atividades pessoais
 
 const R = (ok, msg) => ({ ok, msg });
 
@@ -9,7 +9,7 @@ function spendEnergy(){ if (S.activitiesThisYear >= ACT_LIMIT) return false; S.a
 
 function canAfford(v){ return S.money >= v; }
 
-const adult = () => P().age >= 18;
+const adult = () => P().age >= ageOf("adult"); // maioridade do país atual
 
 /* ---------- Atividades pessoais ----------
    Retornos decrescentes: a n-ésima repetição da mesma atividade no ano
@@ -47,7 +47,7 @@ const ACTIVITIES = [
   { id:"music", name:"Praticar música", emoji:"🎹", minAge:6, cost:100, desc:"+Talento musical", run:()=>{ P().talents.music = clamp(P().talents.music + sc(rint(2,6),"music")); return "Horas de ensaio." + fx({happiness:2}); } },
   { id:"acting", name:"Aulas de teatro", emoji:"🎭", minAge:6, cost:150, desc:"+Talento de atuação", run:()=>{ P().talents.acting = clamp(P().talents.acting + sc(rint(2,6),"acting")); return "Improvisos e monólogos." + fx({happiness:2}); } },
   { id:"train", name:"Treinar esporte", emoji:"🏃", minAge:6, cost:100, desc:"+Talento esportivo, exercício", run:()=>{ P().talents.sport = clamp(P().talents.sport + sc(rint(2,6),"train")); S.health.exercised = true; return "Treino puxado." + fx({health: sc(rint(1,3)*ageBody(),"train")}); } },
-  { id:"license", name:"Autoescola", emoji:"🪪", minAge:18, cost:400, desc:"Tirar a carteira", cond:()=>!S.flags.license, run:()=>{ if (chance(0.5 + P().stats.intelligence/250)){ S.flags.license = true; return "Passei na prova de direção! 🪪" + fx({happiness:6}); } return "Reprovei no exame de direção." + fx({happiness:-3}); } },
+  { id:"license", name:"Autoescola", emoji:"🪪", minAge:16, cost:400, desc:"Tirar a carteira", cond:()=>!S.flags.license, run:()=>{ if (chance(0.5 + P().stats.intelligence/250)){ S.flags.license = true; return "Passei na prova de direção! 🪪" + fx({happiness:6}); } return "Reprovei no exame de direção." + fx({happiness:-3}); } },
   { id:"lottery", name:"Loteria", emoji:"🎟️", minAge:18, cost:10, desc:"Chance minúscula", run:()=>{ S.addictions.gambling = clamp(S.addictions.gambling + 1); const r = rand(); if (r < 0.0004){ const w = wageOf(rint(2e6,4e7)); achieve("lottery","Ganhou na loteria"); return "GANHEI NA LOTERIA!!! 🤑" + fx({money:w, happiness:30}); } if (r < 0.03) return "Acertei a quadra." + fx({money:priceOf(rint(50,800))}); return "Não foi dessa vez."; } },
   { id:"casino", name:"Cassino", emoji:"🎰", minAge:18, cost:0, desc:"Aposte 10% do caixa (vicia)", run:()=>{ S.addictions.gambling = clamp(S.addictions.gambling + rint(3,6)); const bet = Math.max(0, Math.round(S.money*0.1)); if (!bet) return "Sem dinheiro para apostar."; return chance(0.46) ? "A sorte sorriu!" + fx({money:bet, happiness:6}) : "A casa sempre vence." + fx({money:-bet, happiness:-4}); } },
   { id:"volunteer", name:"Voluntariado", emoji:"🙌", minAge:12, cost:0, desc:"+Karma, +Reputação", run:()=>{ addRep(1); if (!S.flags.volRef && chance(0.25)){ S.flags.volRef = true; schedule("volunteerReference", rint(1,3)); } return "Ajudei quem precisava." + fx({happiness: sc(4,"volunteer"), karma:5}); } },
@@ -55,15 +55,18 @@ const ACTIVITIES = [
   { id:"social", name:"Postar nas redes", emoji:"📱", minAge:13, cost:0, desc:"+Fama (talvez)", run:()=>{ const viral = chance((0.04 + P().stats.looks/1000 + P().fame/400) * dim("social")); return viral ? "Meu post viralizou! 🔥" + fx({fame:rint(5,15), happiness:6}) : "Algumas curtidas." + fx({fame:rand()<0.5?1:0}); } },
 ];
 
+/* Regras de idade por país em algumas atividades. */
+const ACT_RULES = { party:"drink", casino:"gamble", lottery:"gamble", license:"drive", vacation:"adult", networking:"work" };
+function actMinAge(x){ const r = ACT_RULES[x.id]; return Math.max(x.minAge || 0, r ? ageOf(r) : 0); }
 function doActivity(id){
   const a = byId(ACTIVITIES, id);
-  if (P().age < a.minAge) return R(false, `Idade mínima: ${a.minAge}.`);
+  if (P().age < actMinAge(a)) return R(false, ACT_RULES[a.id] && P().age >= a.minAge ? ageReason(ACT_RULES[a.id]) : `Idade mínima: ${actMinAge(a)}.`);
   if (inPrison()) return R(false, "Você está preso(a).");
   if (a.cond && !a.cond()) return R(false, "Indisponível.");
   const cost = priceOf(a.cost);
-  if (cost && P().age >= 18 && !canAfford(cost)) return R(false, `Custa ${fmt(cost)}.`);
+  if (cost && adult() && !canAfford(cost)) return R(false, `Custa ${fmt(cost)}.`);
   if (!spendEnergy()) return R(false, "Você está exausto(a). Espere o próximo ano.");
-  if (cost && P().age >= 18) addMoney(-cost);
+  if (cost && adult()) addMoney(-cost); // menor de idade: os pais pagam
   const msg = a.run(); S.actCount[id] = num(S.actCount[id]) + 1;
   log(`${a.emoji} ${a.name}: ${msg}`, ""); sanitize();
   if (P().stats.health <= 0) die("complicações de saúde");

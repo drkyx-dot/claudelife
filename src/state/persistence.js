@@ -34,8 +34,10 @@ function saveGame(silent){
     if (!silent) toast("Jogo salvo 💾"); return true;
   } catch(e){ if (!silent) toast("Não foi possível salvar (armazenamento cheio ou indisponível)."); return false; }
 }
+/* Mínimo para dar para recuperar uma vida: o jogador existe. O resto o
+   normalizador (state.js) reconstrói. */
 function validateState(st){
-  return st && st.player && st.player.stats && Array.isArray(st.rels) && Array.isArray(st.log) && st.edu && typeof st.money === "number";
+  return !!(st && typeof st === "object" && st.player && typeof st.player === "object" && typeof st.player.first === "string");
 }
 function migrate(st){
   // ponto central de migração entre versões de save (ensureState preenche/converte campos)

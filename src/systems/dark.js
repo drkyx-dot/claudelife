@@ -24,6 +24,23 @@ function darkCover(){
   const kids = children().filter(c => c.age < 18).length;
   return clamp(20 + (S.job ? 25 : 0) + (partner() ? 15 : 0) + kids*5 + (S.edu.school ? 10 : 0) - (S.org ? 10 : 0) - P().notoriety/3 - (P().stress > 70 ? 10 : 0));
 }
+/* ---------- Caminho gradual ----------
+   Etapa 1: depois de 3 mortes na vida, a pergunta "você está gostando?"
+            (se disser não, ela pode voltar a cada 3 mortes a mais).
+   Etapa 2: quem disse SIM e mata mais 2 vezes chega ao ponto sem volta
+            (ev_dark_awakening) — e ainda pode escolher parar ali. */
+const DARK_FIRST_ASK = 3, DARK_AFTER_YES = 2;
+function darkOnKill(){
+  const D = dark(); if (D.active || P().age < ageOf("adult")) return;
+  const k = num(S.stats.kills);
+  if (D.answer === "yes"){ D.after = num(D.after) + 1; if (D.after >= DARK_AFTER_YES) enqueue("ev_dark_awakening"); return; }
+  if (k >= DARK_FIRST_ASK && k >= num(D.askAgainAt, DARK_FIRST_ASK)) enqueue("ev_dark_question");
+}
+function answerDark(ans){
+  const D = dark(), k = num(S.stats.kills);
+  if (ans === "yes"){ D.answer = "yes"; D.after = 0; addStress(-4); P().karma = clamp(P().karma - 10); remember("Admiti para mim mesmo(a): gosto do que sinto quando faço isso.", "pending"); }
+  else { D.answer = "no"; D.askAgainAt = k + 3; if (ans === "no"){ addStat("happiness", -6); addStress(10); } }
+}
 function awakenDark(code){
   const D = dark(); if (D.active) return R(false, "Já desperto.");
   if (P().age < 18) return R(false, "—");
@@ -142,7 +159,7 @@ function darkYear(){
   if (D.heat >= 85 && D.clues >= 3 && chance(0.25 + D.clues*0.06)){
     log("🚨 A força-tarefa juntou as pistas. Fui preso(a) por assassinatos em série.", "bad", ["crime"]);
     const pen = DATA.penal[P().country] || { max:40, life:false };
-    sendToPrison(pen.life ? 99 : pen.max, "assassinatos em série", "máxima");
+    sendToPrison(pen.life ? 99 : pen.max, "assassinatos em série", "máxima", { chase:true });
     D.heat = 30; D.caught = true; addFame(30); addNoto(50);
   }
 }

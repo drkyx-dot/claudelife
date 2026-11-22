@@ -41,7 +41,8 @@
 <div id="hub" role="dialog" aria-label="Menu principal"></div>
 
 <!-- dev: erros de script aparecem na tela (útil em testes headless) -->
-<script>addEventListener("error", e => { const d = document.createElement("pre"); d.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:999;background:#b00020;color:#fff;padding:10px;font:12px monospace;white-space:pre-wrap;border-radius:8px"; d.textContent = `${e.message}\n${(e.filename||"").split("/").slice(-2).join("/")}:${e.lineno}`; document.body.appendChild(d); });</script>
+<script>/* painel de erro só no modo ?debug (o jogador vê recuperação automática: ui/safety.js) */
+if (/debug/.test(location.search)) addEventListener("error", e => { const d = document.createElement("pre"); d.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:999;background:#b00020;color:#fff;padding:10px;font:12px monospace;white-space:pre-wrap;border-radius:8px"; d.textContent = `${e.message}\n${(e.filename||"").split("/").slice(-2).join("/")}:${e.lineno}`; document.body.appendChild(d); });</script>
 <!-- 1. dados (catálogos puros) -->
 <script src="src/data/world.js"></script>
 <script src="src/data/education.js"></script>
@@ -147,8 +148,10 @@
 <script src="src/ui/lifestyle.js"></script>
 <script src="src/ui/extras.js"></script>
 <script src="src/ui/tutorial.js"></script>
+<script src="src/ui/safety.js"></script>
 <!-- 8. ferramentas e boot -->
 <script src="src/dev/selftest.js"></script>
+<script src="src/dev/fuzz.js"></script>
 <script src="src/main.js"></script>
 </body>
 </html>

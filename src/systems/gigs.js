@@ -18,7 +18,8 @@ const gig = () => S.gig;
 
 function gigBlock(d){
   const p = P(), rq = d.req || {};
-  if (p.age < d.minAge) return `Idade mínima ${d.minAge}`;
+  const need = Math.max(d.minAge, d.adult ? ageOf("adult") : 0, d.id === "rideshare" ? ageOf("drive") : 0, ageOf("work"));
+  if (p.age < need) return `Idade mínima: ${need}`;
   if (inPrison()) return "Você está preso(a)";
   if (rq.car && (!S.vehicles.length || !S.flags.license)) return "Precisa de carro e carteira";
   if (rq.int && p.stats.intelligence < rq.int) return `Inteligência ${rq.int}`;

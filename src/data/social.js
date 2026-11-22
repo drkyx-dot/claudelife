@@ -98,7 +98,7 @@ DATA.interview = [
 DATA.tips = [
   "Na briga, o modo 🎯 Controlado usa sua maestria para DOSAR a força: faixa-preta quase nunca mata sem querer.",
   "💢 Com tudo anula o controle: o dano sobe, e a chance de matar alguém triplica.",
-  "Golpes especiais (Mata-Leão, Chute Alto na Têmpora…) são desbloqueados treinando na Academia de Lutas.",
+  "Golpes especiais (Mata-Leão, Chute Alto na Têmpora…) aparecem conforme você treina na Academia de Lutas.",
   "Treino intenso rende quase o dobro de maestria, mas lesiona bem mais, ainda mais depois dos 50.",
   "Na fuga da prisão, nunca pise em casas vermelhas (vigiadas agora) nem laranjas (vigiadas no próximo turno).",
   "Câmeras giram a cada 2 turnos. Às vezes, esperar ⏸ é o melhor movimento.",

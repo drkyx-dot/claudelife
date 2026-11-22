@@ -14,6 +14,9 @@ function fx(o){
   return parts.length ? ` (${parts.join(", ")})` : "";
 }
 
+/* Despesa de evento: adulto paga (mostra o valor); menor de idade, os pais pagam. */
+function costFx(amount, what, extra = {}){ return (minor() ? payBill(amount, what) : fx({ money: -Math.round(amount) })) + fx(extra); }
+
 const EVENT_MAP = Object.fromEntries(EVENTS.map(e=>[e.id,e]));
 
 function enqueue(id, ctx){
@@ -50,7 +53,11 @@ function queueEvents(){
 function resolveEvent(i){
   const q = S.queue[0]; if (!q) return null;
   const ev = EVENT_MAP[q.id]; let res = "";
-  try { const ch = ev.choices(q.ctx)[i]; res = ch.run(q.ctx) || ""; log(`${ev.emoji} ${ev.title}: ${res}`, /−|perdi|demitid|pres|condenad/i.test(res) ? "bad" : "good"); }
+  try {
+    const ch = ev.choices(q.ctx)[i]; res = ch.run(q.ctx) || "";
+    if (S.escape?.mode === "street" && !S.escape.over && !S.escape.t) res = `${res.replace(/\s*(Fui preso|Fui pego|Condenad)[^.]*\./gi, "")} 🚨 A polícia chegou para te prender. Fuja ou se renda!`.trim();
+    log(`${ev.emoji} ${ev.title}: ${res}`, /−|perdi|demitid|pres|condenad|polícia/i.test(res) ? "bad" : "good");
+  }
   catch(e){ console.error(e); res = "(evento ignorado)"; }
   S.queue.shift();
   sanitize();

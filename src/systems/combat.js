@@ -189,7 +189,7 @@ function endFight(result){
   let s = { win:`Venci a briga contra ${name}.`, lose:`Perdi a briga para ${name}.`, draw:`A briga com ${name} terminou empatada.`, fled:"Fugi da briga.", surrender:"Me rendi." }[F.result];
   if (F.kind === "tournament") s = F.result === "win" ? `Vitória sobre ${name}!` : `Derrota para ${name}.`;
   if (dmgTaken > 0) s += injure(Math.round(dmgTaken * 0.4), F.kind === "tournament" ? "Uma luta oficial" : "Uma briga", 0.2);
-  if (F.myOutcome === "coma"){ s += injure(rint(18, 30), "O coma após a briga", 0.6); const bill = priceOf(rint(2000, 8000)) * (1 - effectivePlan().coverage); addMoney(-Math.round(bill)); s += ` Conta do hospital: ${fmt(Math.round(bill))}.`; }
+  if (F.myOutcome === "coma"){ s += injure(rint(18, 30), "O coma após a briga", 0.6); s += payBill(priceOf(rint(2000, 8000)) * (1 - effectivePlan().coverage), "a conta do hospital"); }
   if (F.myOutcome === "death") S.flags.forcedDeath = F.kind === "tournament" ? "lesão cerebral em uma luta oficial" : `ferimentos em uma briga com ${name}`;
   F.summary = s + (F.summary ? " " + F.summary : "");
   (FIGHT_AFTER[F.kind] || (()=>{}))(F);
@@ -244,7 +244,8 @@ function assaultCharge(F){
   addNoto(8); P().karma = clamp(P().karma - (selfDef ? 2 : 10));
   if (selfDef){ F.summary += " A polícia registrou como legítima defesa."; return; }
   if (P().age >= 18 && chance(0.3 + (F.kind === "street" ? 0.1 : 0))){
-    const y = rint(1, 4); sendToPrison(y, "lesão corporal grave"); F.summary += ` Fui preso(a) por lesão corporal grave (${y} ano(s)).`;
+    const y = rint(1, 4); sendToPrison(y, "lesão corporal grave", undefined, { chase:true });
+    F.summary += S.escape?.mode === "street" ? " Alguém chamou a polícia. A viatura acabou de virar a esquina." : ` Fui preso(a) por lesão corporal grave (${y} ano(s)).`;
   } else F.summary += " Ninguém me denunciou… ainda.";
 }
 
@@ -294,13 +295,13 @@ function registerKill(F){
     else { const y = rint(1, 3); sendToPrison(y, "excesso de legítima defesa"); F.summary += ` O júri viu excesso: ${y} ano(s).`; }
   }
   else if (P().age >= 12 && chance(pCaught * 0.55)){
-    sendToPrison(years, label, years >= 12 ? "máxima" : "média");
-    F.summary += ` Fui preso(a) em flagrante por ${label}: ${years >= 99 ? "PRISÃO PERPÉTUA" : years + " anos"}.`;
+    sendToPrison(years, label, years >= 12 ? "máxima" : "média", { chase:true });
+    F.summary += S.escape?.mode === "street" ? ` A polícia chegou antes de eu sair dali. Se me pegarem: ${label}.` : ` Fui preso(a) em flagrante por ${label}: ${years >= 99 ? "PRISÃO PERPÉTUA" : years + " anos"}.`;
   } else {
     schedule("homicideCase", rint(1, 3), { name, label, years, p: pCaught }, `A polícia investiga a morte de ${name}.`);
     F.summary += " Saí antes da polícia chegar. Mas a investigação vai começar.";
   }
-  if (S.dark && !S.dark.active && P().age >= 18 && chance(0.4)) enqueue("ev_dark_awakening");
+  darkOnKill(); // caminho gradual do lado sombrio (systems/dark.js)
   // família / aliados da vítima
   if (chance(F.kind === "rival" ? 0.8 : 0.45)) schedule("victimRevenge", rint(1, 5), { name, kin: F.kind === "rival" ? "a facção dele" : pick(["o irmão","o primo","o filho","a irmã","o melhor amigo"]) }, `A família de ${name} não vai esquecer.`);
 }

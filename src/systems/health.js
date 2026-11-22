@@ -26,10 +26,9 @@ function planPremium(id = S.health.plan){
   return priceOf(pl.cost * (1 + Math.max(0, P().age - 35) * 0.035) * (1 + chronic * 0.25));
 }
 /* Quanto do custo de saúde o jogador paga (menores: pais cobrem parte). */
-function selfPayShare(){
-  if (P().age >= 18 || !parents().length) return 1;
-  return classOf().uninsured;
-}
+/* Quanto do custo médico sai do bolso do personagem. Menor de idade: nada
+   (pais ou responsáveis pagam; família pobre usa a rede pública). */
+function selfPayShare(){ return minor() ? 0 : 1; }
 function treatmentCost(il, tierId = il.tier){
   const d = byId(DATA.illnesses, il.id), t = byId(DATA.treatments, tierId);
   const cov = tierId === "public" ? 0 : effectivePlan().coverage;
@@ -141,6 +140,7 @@ function treatIllness(id, tierId){
   const il = S.illnesses.find(i => i.id === id), t = byId(DATA.treatments, tierId);
   if (!il || !il.diagnosed) return R(false, "Doença não diagnosticada.");
   if (t.minStage && il.stage < t.minStage) return R(false, `Disponível apenas a partir do estágio ${DATA.stages[t.minStage].name}.`);
+  if (minor() && clsBand() === 0 && tierId !== "public") return R(false, "Sua família não tem como pagar hospital particular. Só a rede pública.");
   const d = byId(DATA.illnesses, id), cost = treatmentCost(il, tierId);
   if (tierId !== "public" && !canAfford(cost)) return R(false, `Precisa de ${fmt(cost)} para o primeiro ano.`);
   il.treated = true; il.tier = tierId; emit("hospital");
@@ -151,7 +151,7 @@ function treatIllness(id, tierId){
 }
 function stopTreatment(id){ const il = S.illnesses.find(i=>i.id===id); if (!il) return R(false,"?"); il.treated = false; il.tier = null; log(`Interrompi o tratamento de ${byId(DATA.illnesses,id).name}.`, "bad"); return R(true, "Tratamento interrompido."); }
 function setHealthPlan(id){
-  if (P().age < 18) return R(false, "Menores usam o plano dos pais.");
+  if (minor()) return R(false, "Menores de idade usam o plano dos pais.");
   S.health.plan = id; const pl = byId(DATA.healthPlans, id);
   log(id === "none" ? "Cancelei meu plano de saúde." : `Contratei: ${pl.name} (${fmt(planPremium(id))}/ano).`, "");
   return R(true, id === "none" ? "Plano cancelado." : `${pl.name} ativo.`);

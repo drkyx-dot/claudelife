@@ -10,9 +10,69 @@ const PROPERTY_ID_MIGRATION = { townhouse:"sobrado" }; // ids removidos em vers�
 
 let S = null; // estado global da vida atual
 
+/* ---------- Formato: força o TIPO certo de cada campo antes de qualquer uso ----------
+   Saves antigos, gravados no meio de um erro ou editados podem trazer
+   lista como texto, objeto como null etc. Aqui tudo volta ao formato
+   esperado; ensureState() depois preenche os valores padrão. */
+const isObj = v => !!v && typeof v === "object" && !Array.isArray(v);
+const SHAPE = {
+  lists:   ["rels","log","achievements","illnesses","properties","vehicles","loans","businesses","scheduled","consequences","queue","record","jobHistory","pets","collection","arsenal","lineage"],
+  objects: ["edu","flags","health","world","stats","investments","cooldown","addictions","actCount","martial","look","identity","dark"],
+  nullable:["job","prison","org","gig","wanted","fight","escape","hunt","yearSummary","lastYear","final","snap"],
+  strings: ["rental","partTime"],
+};
+function normalizeShape(st){
+  for (const k of SHAPE.lists){ st[k] = Array.isArray(st[k]) ? st[k].filter(x => k === "lineage" || k === "achievements" || isObj(x)) : []; }
+  for (const k of SHAPE.objects) if (!isObj(st[k])) st[k] = {};
+  for (const k of SHAPE.nullable) if (st[k] !== null && st[k] !== undefined && !isObj(st[k])) st[k] = null;
+  for (const k of SHAPE.strings) if (st[k] !== null && st[k] !== undefined && typeof st[k] !== "string") st[k] = null;
+  const p = st.player; if (!isObj(p.stats)) p.stats = {};
+  for (const k of ["health","happiness","intelligence","looks"]) p.stats[k] = clamp(num(p.stats[k], 50));
+  if (!isObj(p.talents)) p.talents = {}; for (const k of ["music","acting","sport"]) p.talents[k] = clamp(num(p.talents[k], 30));
+  if (!Array.isArray(p.traits)) p.traits = []; p.traits = p.traits.filter(t => byId(DATA.traits, t));
+  p.age = Math.max(0, Math.round(num(p.age))); p.alive = p.alive !== false;
+  if (!byId(DATA.countries, p.country)) p.country = "BR";
+  if (!byId(DATA.countries, p.country).cities.includes(p.city)) p.city = byId(DATA.countries, p.country).cities[0];
+  st.money = num(st.money); st.seed = Math.round(num(st.seed, 12345));
+  // listas de objetos com campos obrigatórios
+  st.rels = st.rels.filter(r => r.uid && typeof r.first === "string").map(r => ({ ...r, age: Math.max(0, Math.round(num(r.age))), rel: clamp(num(r.rel, 50)), alive: r.alive !== false }));
+  st.queue = st.queue.filter(q => typeof q.id === "string" && EVENT_MAP && EVENT_MAP[q.id]).map(q => ({ id:q.id, ctx: isObj(q.ctx) ? q.ctx : {} }));
+  st.scheduled = st.scheduled.filter(x => typeof x.kind === "string").map(x => ({ ...x, at: num(x.at, p.age + 1), ctx: isObj(x.ctx) ? x.ctx : {} }));
+  st.log = st.log.filter(e => typeof e.text === "string");
+  for (const k of ["properties","vehicles","businesses","loans","collection","arsenal","pets"]) st[k] = st[k].filter(x => typeof x.id === "string" || k === "loans").map(x => ({ uid: x.uid || uid(), ...x }));
+  // nulos que precisam de estrutura interna válida (senão viram null)
+  if (st.job && (!byId(DATA.careers, st.job.careerId))) st.job = null;
+  if (st.job){ const c = byId(DATA.careers, st.job.careerId); st.job.level = Math.max(0, Math.min(c.levels.length - 1, Math.round(num(st.job.level)))); for (const k of ["levelYears","years","perf","effort","salary"]) st.job[k] = num(st.job[k], k === "perf" ? 55 : k === "effort" ? 1 : 0); }
+  if (st.prison){ st.prison.years = Math.max(1, Math.round(num(st.prison.years, 1))); st.prison.served = Math.round(num(st.prison.served)); st.prison.crime = String(st.prison.crime || "crime"); if (!isObj(st.prison.courses)) st.prison.courses = {}; }
+  if (st.org && !(Array.isArray(st.org.members) && Array.isArray(st.org.ops))){ st.org.members = Array.isArray(st.org.members) ? st.org.members : []; st.org.ops = Array.isArray(st.org.ops) ? st.org.ops : []; }
+  if (st.org){ st.org.rivals = Array.isArray(st.org.rivals) ? st.org.rivals.filter(isObj) : []; st.org.territories = Array.isArray(st.org.territories) ? st.org.territories.filter(t => typeof t === "string") : []; st.org.members = st.org.members.filter(isObj); st.org.ops = st.org.ops.filter(isObj); st.org.name = String(st.org.name || "Organização"); st.org.rank = Math.max(0, Math.min(DATA.orgRanks.length - 1, Math.round(num(st.org.rank)))); }
+  if (st.wanted){ for (const k of ["since","remaining","years"]) st.wanted[k] = Math.max(0, Math.round(num(st.wanted[k]))); st.wanted.crime = String(st.wanted.crime || "crime"); }
+  if (st.gig && !byId(DATA.gigs, st.gig.id)) st.gig = null;
+  if (st.fight && !(DATA.fightProfiles[st.fight.kind] && isObj(st.fight.opp) && isObj(st.fight.me) && isObj(st.fight.ctx) && Array.isArray(st.fight.lines))) st.fight = null;
+  if (st.escape && !(Array.isArray(st.escape.stages) && st.escape.stages.length && st.escape.stages.every(x => isObj(x) && Array.isArray(x.grid)) && Array.isArray(st.escape.pos))) st.escape = null;
+  if (st.escape && st.escape.mode !== "street" && !st.prison) st.escape = null; // fuga de presídio sem presídio
+  if (st.escape && st.escape.mode === "street" && !(isObj(st.escape.pending) && num(st.escape.pending.years) > 0)) st.escape = null;
+  if (st.hunt && !isObj(st.hunt.t)) st.hunt = null;
+  if (isObj(st.martial)){ if (!isObj(st.martial.arts)) st.martial.arts = {}; if (!Array.isArray(st.martial.enrolled)) st.martial.enrolled = []; if (!Array.isArray(st.martial.titles)) st.martial.titles = []; if (!isObj(st.martial.rec)) st.martial.rec = {}; }
+  if (isObj(st.dark) && !Array.isArray(st.dark.victims)) st.dark.victims = [];
+  if (isObj(st.world) && !Array.isArray(st.world.history)) st.world.history = [];
+  if (isObj(st.stats) && !Array.isArray(st.stats.countries)) st.stats.countries = [p.country];
+  if (isObj(st.identity)) for (const k of ["other","same","both","none","pan","steps"]) st.identity[k] = num(st.identity[k]);
+  return st;
+}
+
 /* ---------- Defaults: garante todos os campos (vida nova, migração, herdeiro) ---------- */
 function ensureState(st = S){
+  normalizeShape(st);
   const p = st.player;
+  st.edu = Object.assign({ level:0, school:null, yearsLeft:0, perf:60, major:null, degrees:[], techs:[], debt:0, dropped:false }, st.edu);
+  if (!Array.isArray(st.edu.degrees)) st.edu.degrees = []; if (!Array.isArray(st.edu.techs)) st.edu.techs = [];
+  st.edu.level = Math.max(0, Math.min(6, Math.round(num(st.edu.level)))); st.edu.perf = clamp(num(st.edu.perf, 60)); st.edu.yearsLeft = Math.max(0, num(st.edu.yearsLeft)); st.edu.debt = Math.max(0, num(st.edu.debt));
+  p.first = String(p.first || "Sem nome"); p.last = String(p.last || ""); p.gender = p.gender === "F" ? "F" : "M";
+  p.birthYear = Math.round(num(p.birthYear, 2000)); p.cls = Math.max(0, Math.min(DATA.classes.length - 1, Math.round(num(p.cls, 4))));
+  p.fame = clamp(num(p.fame)); p.notoriety = clamp(num(p.notoriety)); p.lifestyle = Math.max(0, Math.min(3, Math.round(num(p.lifestyle, 1))));
+  st.activitiesThisYear = Math.max(0, Math.round(num(st.activitiesThisYear))); st.priceIndex = num(st.priceIndex, 1) || 1;
+  st.lifeNo = Math.max(1, Math.round(num(st.lifeNo, 1))); st.parole = Math.max(0, num(st.parole)); st.unemployedYears = Math.max(0, num(st.unemployedYears));
   p.stress     = clamp(num(p.stress, 15));
   p.reputation = clamp(num(p.reputation, 50));
   p.vitality   = clamp(num(p.vitality, 100));
@@ -105,6 +165,7 @@ const LOG_TAGS = [
 ];
 function autoTag(text){ return LOG_TAGS.filter(([,re]) => re.test(text)).map(([t]) => t); }
 function log(text, kind = "", tags){
+  text = typeof gtxPlayer === "function" ? gtxPlayer(String(text)) : String(text); // "preso(a)" → forma do gênero
   S.log.push({ age:S.player.age, year:year(), text, kind, tags: tags || autoTag(text) });
   if (S.log.length > 4000) S.log.splice(0, S.log.length - 4000); // evita save gigante
 }
@@ -150,6 +211,22 @@ const partner = () => S.rels.find(r => (r.role==="partner"||r.role==="spouse"||r
 const children = (alive=true) => S.rels.filter(r => r.role==="child" && (!alive || r.alive));
 const inPrison = () => !!S.prison;
 const classOf = () => DATA.classes[P().cls] || DATA.classes[4];
+/* Idade legal no país atual para uma regra (adult, work, drive, drink, gamble). */
+function ageOf(rule){ const r = DATA.ageRules[P().country] || DATA.ageRules.BR; return num(r[rule], 18); }
+const minor = () => P().age < ageOf("adult");
+/* Conta de hospital, multa leve etc.: menor de idade não paga do próprio
+   bolso — os pais (ou quem cria) pagam, e isso pesa um pouco na relação. */
+function payBill(amount, what){
+  amount = Math.round(Math.max(0, num(amount))); if (!amount) return "";
+  if (minor()){
+    const ps = parents(); for (const pa of ps) pa.rel = clamp(pa.rel - (amount > priceOf(2000) ? 3 : 1));
+    log(`${ps.length ? "Meus pais pagaram" : "A família que me cria pagou"} ${what} (${fmt(amount)}).`, "");
+    return ` ${ps.length ? "Meus pais pagaram" : "Minha família pagou"} ${what}: ${fmt(amount)}.`;
+  }
+  addMoney(-amount); return ` ${what[0].toUpperCase() + what.slice(1)}: ${fmt(amount)}.`;
+}
+/* "Só a partir dos 21 nos Estados Unidos." — explica a regra do país. */
+function ageReason(rule){ const a = ageOf(rule), base = DATA.ageRules.BR[rule]; return a !== base ? `Em ${country().name}, só a partir dos ${a} anos.` : `Idade mínima: ${a} anos.`; }
 const clsBand = () => classOf().band; // 0–4: faixa usada pelas fórmulas gerais
 function career(){ return S.job ? byId(DATA.careers, S.job.careerId) : null; }
 function residence(){ return S.properties.find(p => p.residence); }

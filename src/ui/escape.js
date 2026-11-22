@@ -27,13 +27,13 @@ function renderEscape(){
   }
   const left = st.limit - E.t;
   let h = `<div class="escape ${E.over ? "done " + E.result : ""}">
-    <div class="fight-head"><h3>🏃 ${esc(st.name)}</h3>${chip(`Etapa ${E.stage + 1}/${E.stages.length}`, "neutral")}${chip(`Dificuldade ${E.d}/8`, E.d >= 5 ? "bad" : E.d >= 3 ? "warn" : "good")}
+    <div class="fight-head"><h3>${E.mode === "street" ? `🚓 Fuga da polícia · ${esc(st.name)}` : `🏃 ${esc(st.name)}`}</h3>${E.mode === "street" ? chip(`Se pegarem: ${E.pending.years} ano(s)`, "bad") : chip(`Etapa ${E.stage + 1}/${E.stages.length}`, "neutral")}${chip(`Dificuldade ${E.d}/${E.mode === "street" ? 7 : 8}`, E.d >= 5 ? "bad" : E.d >= 3 ? "warn" : "good")}
       ${chip(`⏱️ ${left} turno(s)`, left <= 3 ? "bad" : "neutral")}${st.key ? chip(E.key ? "🔑 cartão na mão" : "🔑 pegue o cartão", E.key ? "good" : "warn") : ""}</div>
     <div class="esc-board"><div class="escgrid" role="grid" aria-label="Mapa da fuga: toque numa casa vizinha para andar" style="grid-template-columns:repeat(${st.w},1fr)">${cells}</div>
-    <div class="esc-side"><div class="esc-legend"><span><i class="lg now"></i>vigiado agora</span><span><i class="lg next"></i>vigiado no próximo turno</span><span>👮 guarda (▲ direção)</span><span>📹 câmera (gira a cada 2 turnos)</span></div>
-    <div class="esc-msg" aria-live="polite">${esc(E.lastMsg || "Chegue à saída sem pisar em casas vermelhas ou laranjas.")}</div>`;
+    <div class="esc-side"><div class="esc-legend"><span><i class="lg now"></i>vigiado agora</span><span><i class="lg next"></i>vigiado no próximo turno</span><span>👮 ${E.mode === "street" ? "policial" : "guarda"} (▲ direção)</span><span>📹 câmera (gira a cada 2 turnos)</span></div>
+    <div class="esc-msg" aria-live="polite">${esc(E.lastMsg || (E.mode === "street" ? "Chegue à saída sem ser visto. Casa vermelha ou laranja = um policial te vê." : "Chegue à saída sem pisar em casas vermelhas ou laranjas."))}</div>`;
   if (E.over){
-    h += `</div></div><div class="fight-end"><div class="emoji">${E.result === "ok" ? "🏃‍♂️💨" : "🚨"}</div><div class="result">${esc(E.msg)}</div><div class="choices"><button class="primary" onclick="UI.escapeDone()">Continuar</button></div></div></div>`;
+    h += `</div></div><div class="fight-end"><div class="emoji">${E.result === "ok" ? "🏃‍♂️💨" : E.result === "surrender" ? "🙌" : "🚨"}</div><div class="result">${esc(gtxPlayer(E.msg))}</div><div class="choices"><button class="primary" onclick="UI.escapeDone()">Continuar</button></div></div></div>`;
     return h;
   }
   h += `<div class="dpad">
@@ -41,7 +41,8 @@ function renderEscape(){
       <button aria-label="Oeste" onclick="UI.escMove('W')">◀</button><button aria-label="Esperar" class="wait" onclick="UI.escMove('wait')">⏸</button><button aria-label="Leste" onclick="UI.escMove('E')">▶</button>
       <span></span><button aria-label="Sul" onclick="UI.escMove('S')">▼</button><span></span></div>
     <div class="oddsline" style="text-align:center">${Device.coarse() ? "Toque numa casa vizinha ou deslize o dedo na grade · toque em você para esperar" : "Setas/WASD ou clique numa casa vizinha · espaço para esperar"} · melhor rota: ${st.opt} turnos</div>
-    ${!E.stage && !E.t ? `<div class="choices" style="margin-top:8px"><button onclick="UI.escAbort()">Desistir e voltar para a cela</button></div>` : ""}</div></div></div>`;
+    ${E.mode === "street" ? `<div class="choices" style="margin-top:8px"><button onclick="UI.escAbort()">🙌 Me render<small>vai preso(a), mas sem a pena extra por resistência</small></button></div>`
+      : !E.stage && !E.t ? `<div class="choices" style="margin-top:8px"><button onclick="UI.escAbort()">Desistir e voltar para a cela</button></div>` : ""}</div></div></div>`;
   return h;
 }
 
@@ -53,7 +54,11 @@ Object.assign(UI, {
     UI.escapeOpen();
     if (E.over && E.result === "fail"){ const g = $(".escgrid"); if (g) restartClass(g, "shake"); }
   },
-  escAbort(){ if (abortEscape()){ closeModal(); toast("Você desistiu da fuga. Fica para outra hora."); saveGame(true); render(); } },
+  escAbort(){
+    const r = abortEscape();
+    if (r === "surrender"){ saveGame(true); render(); return UI.escapeOpen(); }   // rendeu-se: mostra o desfecho
+    if (r){ closeModal(); toast("Você desistiu da fuga. Fica para outra hora."); saveGame(true); render(); }
+  },
   escapeDone(){
     const before = UI._mgBefore || takeSnapshot(), msg = closeEscape();
     sanitize(); saveGame(true); render(); UI._mgBefore = null;

@@ -3,11 +3,12 @@
 
 (function boot(){
   try { const t = localStorage.getItem("claudilife.theme"); if (t) document.documentElement.dataset.theme = t; } catch(e){}
-  if (/selftest|balance|unit=|demo=|acttest|audit/.test(location.search)) NO_PERSIST = true; // testes nunca tocam nos saves reais
+  if (/selftest|balance|unit=|demo=|acttest|audit|fuzz=/.test(location.search)) NO_PERSIST = true; // testes nunca tocam nos saves reais
   if (/selftest/.test(location.search)){
     Sound.mute(true);
     const r = selfTest(60); r.emigration = emigrationTest(); r.heir = heirTest(); r.combat = combatTest(); r.escape = escapeTest();
-    r.v7 = { identity: identityTest().OK, prison: prisonTest().OK, pets: petTest(120).OK, classes: classTest(600).OK, bonds: bondsTest().OK, gigs: gigTest().OK, sports: sportsTest().OK, dark: darkTest(30).OK }; S = null;
+    r.v7 = { identity: identityTest().OK, prison: prisonTest().OK, pets: petTest(120).OK, classes: classTest(600).OK, bonds: bondsTest().OK, gigs: gigTest().OK, sports: sportsTest().OK, dark: darkTest(30).OK,
+      safety: safetyTest().OK, corrupt: corruptTest(80).OK, chase: chaseTest().OK, darkPath: darkPathTest().OK, ages: ageTest().OK }; S = null;
     document.body.innerHTML = `<pre id="selftest" style="white-space:pre-wrap;padding:16px;font:13px monospace">${esc(JSON.stringify({ ...r, ages: r.ages.join(","), scores: undefined, errors: r.errors.slice(0,15), bad: r.bad.slice(0,10), errorCount:r.errors.length, badCount:r.bad.length }, null, 1))}</pre>`;
     document.title = "SELFTEST " + (r.errors.length||r.bad.length||r.invariants||!r.emigration.OK||!r.heir.OK||!r.combat.OK||!r.escape.OK||Object.values(r.v7).some(x=>!x) ? "FAIL" : "OK");
     document.body.insertAdjacentHTML("afterbegin", `<h1 id="verdict" style="font:700 22px monospace;padding:12px 16px;margin:0">${document.title} · v7 ${esc(JSON.stringify(r.v7))} · emig ${r.emigration.OK} · herdeiro ${r.heir.OK} · combate ${r.combat.OK} · fuga ${r.escape.OK} · invariantes ${r.invariants||0}</h1>`);
@@ -19,6 +20,14 @@
     document.body.innerHTML = `<pre style="white-space:pre-wrap;padding:12px;font:12px monospace">${esc(JSON.stringify(r, null, 1))}</pre>`;
     document.body.insertAdjacentHTML("afterbegin", `<h1 style="font:700 18px monospace;padding:10px 12px;margin:0">${unit[1]} ${r.OK ? "OK" : "FAIL"}${r.erro ? " · " + esc(r.erro) : ""}</h1>`);
     document.title = unit[1] + (r.OK ? " OK" : " FAIL"); return;
+  }
+  const fz = location.search.match(/fuzz=(\d+)/); // dev: ?fuzz=1500&seed=3 — cliques aleatórios na interface real
+  if (fz){
+    NO_PERSIST = true; Sound.mute(true);
+    const seed = +(location.search.match(/seed=(\d+)/)||[0,1])[1];
+    (r => { document.documentElement.classList.remove("lock"); closeModal(); hideHub();
+      document.body.insertAdjacentHTML("beforeend", `<pre id="fuzz" style="position:fixed;inset:0;z-index:9999;background:#fff;color:#000;margin:0;white-space:pre-wrap;font:11px monospace;padding:8px;overflow:auto">FUZZ ${r.OK ? "OK" : "FAIL"}\n${esc(JSON.stringify(r, null, 1))}</pre>`); document.title = "FUZZ " + (r.OK ? "OK" : "FAIL"); })(uiFuzz(+fz[1], seed));
+    return;
   }
   if (/audit/.test(location.search)){ // dev: ?audit — estouros de largura e alvos de toque
     Sound.mute(true); const r = layoutAudit(); document.documentElement.classList.remove("lock");
@@ -69,6 +78,7 @@
       if (k === "gig"){ startGig("streamer"); S.gig.audience = 3400; TAB = "career"; render(); }
       if (k === "dark"){ S.money += priceOf(1e5); buyWeapon("tactical"); awakenDark("code"); dark().urge = 64; dark().heat = 38; dark().clues = 2; TAB = "acts"; render(); }
       if (k === "hunt"){ awakenDark("code"); UI.hunt(); }
+      if (k === "chase"){ P().age = Math.max(P().age, 20); sendToPrison(9, "roubo de carga", undefined, { chase:true }); render(); UI.escapeOpen(); }
       if (k === "tut"){ UI._tut = { i:2, mandatory:true }; UI.tutStep(); }
       if (k === "collect"){ S.money += priceOf(2e6); buyCollectible("fossil"); buyCollectible("watch"); buyCollectible("idol"); TAB = "assets"; render(); }
     }

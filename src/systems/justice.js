@@ -18,8 +18,10 @@ function prisonYear(){
 
 /* security: "mínima" | "média" | "máxima" (padrão: pela pena). Foragido(a)
    preso(a) por outro crime soma o restante da pena antiga. */
-function sendToPrison(years, crime, security){
+function sendToPrison(years, crime, security, opts = {}){
   years = Math.max(1, Math.round(years));
+  // flagrante/mandado: a polícia chega, e o jogador pode tentar fugir (minigame de rua)
+  if (opts.chase && canChase()) return startChase(years, crime, security);
   if (S.wanted){ years += num(S.wanted.remaining) + 2; crime += " + fuga anterior"; security = "máxima"; S.wanted = null; }
   years = Math.min(99, years);
   if (S.fight) S.fight.next = null; // torneio não continua atrás das grades
@@ -69,8 +71,9 @@ function commitCrime(id){
   }
   let yrs = rint(...c.years) + (S.record.length ? 1 : 0) + (S.parole>0 ? 2 : 0);
   if (yrs <= 0){ const fine = priceOf(rint(200,2000)); addMoney(-fine); S.record.push({ crime:c.name, age:P().age, years:0 }); log(`🚓 Pego(a) em flagrante (${c.name}). Multa de ${fmt(fine)} e ficha suja.`, "bad"); return R(false, `Pego(a)! Multa de ${fmt(fine)}.`); }
-  sendToPrison(yrs, c.name.toLowerCase());
-  return R(false, `Pego(a)! Condenado(a) a ${yrs} ano(s).`);
+  sendToPrison(yrs, c.name.toLowerCase(), undefined, { chase:true });
+  if (S.escape?.mode === "street") return R(false, "🚨 Deu errado e a polícia chegou! Fuja ou se renda.");
+  return R(false, `Fui pego(a). Condenado(a) a ${yrs} ano(s).`);
 }
 
 /* Reabilitação criminal: 5 anos sem crimes + advogado → chance de limpar o antecedente mais antigo. */
@@ -110,7 +113,7 @@ function commitCyber(c){
     return R(true, `Deu certo! ${fmt(g)} em dinheiro SUJO — precisa lavar. Rastro estimado: ${Math.round(trace*100)}%.`);
   }
   S.cyberSkill = clamp(num(S.cyberSkill) + 1);
-  if (P().age >= 18 && chance(trace * 1.3)){ addNoto(c.noto); emit("siren"); const y = rint(...c.years); sendToPrison(Math.max(1, y), c.name.toLowerCase()); return R(false, `O banco rastreou o IP na hora. Preso(a) por ${c.name.toLowerCase()}: ${y} ano(s).`); }
+  if (P().age >= 18 && chance(trace * 1.3)){ addNoto(c.noto); emit("siren"); const y = rint(...c.years); sendToPrison(Math.max(1, y), c.name.toLowerCase(), undefined, { chase:true }); return R(false, S.escape?.mode === "street" ? "🚨 O banco rastreou o IP e a polícia está na sua porta! Fuja ou se renda." : `O banco rastreou o IP na hora. Preso(a) por ${c.name.toLowerCase()}: ${y} ano(s).`); }
   log(`💻 Tentei ${c.name.toLowerCase()} e não rolou. Perdi ${fmt(prep)} de preparação.`, "bad");
   return R(false, `Não deu certo. Perdi os ${fmt(prep)} da preparação.`);
 }

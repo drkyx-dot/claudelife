@@ -70,7 +70,8 @@ function endJob(reason){
 /* ---------- Carreira ---------- */
 function jobEligibility(c){
   const E = S.edu, a = P().age, st = P().stats;
-  if (a < Math.max(18, c.minAge||0)) return `Idade mínima: ${Math.max(18, c.minAge||0)}`;
+  if (a < Math.max(ageOf("adult"), c.minAge||0)) return `Idade mínima: ${Math.max(ageOf("adult"), c.minAge||0)}`;
+  if (c.needsCar && a < ageOf("drive")) return ageReason("drive");
   if (inPrison()) return "Você está preso(a)";
   if (S.wanted && !S.wanted.fakeId) return "Foragido(a): qualquer checagem de documentos te entrega";
   if (S.wanted && (c.exam || c.elected || c.cleanRecord)) return "Identidade falsa não passa em concurso/checagem de antecedentes";
@@ -118,7 +119,7 @@ function applyJob(id, iv = {}){
 
 function applyPartTime(id){
   const j = byId(DATA.partTime, id);
-  if (P().age < j.minAge) return R(false, `Idade mínima ${j.minAge}.`);
+  if (P().age < Math.max(j.minAge, ageOf("work"))) return R(false, P().age >= j.minAge ? ageReason("work") : `Idade mínima: ${j.minAge}.`);
   if (j.minInt && P().stats.intelligence < j.minInt) return R(false, "Inteligência insuficiente.");
   if (S.job) return R(false, "Você já tem emprego em tempo integral.");
   if (inPrison()) return R(false, "Você está preso(a).");

@@ -15,7 +15,7 @@ function selfTest(lives=60){
     try {
       if (!inPrison() && a >= 12 && rand() < 0.05){ const k = rand(); if (k < 0.4) startGig(pick(DATA.gigs).id); else if (S.gig){ k < 0.6 ? promoteGig() : k < 0.8 ? practiceGig() : setGigPace(rint(0,2)); } }
       if (!inPrison() && a >= 18 && rand() < 0.03){ const k = rand(); if (k < 0.4) buyCollectible(pick(DATA.collectibles).id); else if (k < 0.55 && collection().length) sellCollectible(pick(collection()).uid); else if (k < 0.65 && collection().length) insureCollectible(pick(collection()).uid); else if (k < 0.85) buyWeapon(pick(DATA.armory).id); else applyGunLicense(); }
-      if (!inPrison() && a >= 18 && !dark().active && rand() < 0.004) awakenDark(chance(0.6) ? "code" : "none");
+      // lado sombrio: só pelo caminho gradual (mortes → pergunta → mais mortes)
       if (dark().active && rand() < 0.35) autoHunt();
       if (isAthlete() && rand() < 0.3) extraTraining();
       if (inPrison() && roll < 0.25) startEscape();
@@ -396,7 +396,7 @@ function sportsTest(n = 20){
       if (S.log.some(e => /Transferência|Renovei/.test(e.text) && e.age === P().age)) contracts++;
     }
     if (S.flags.exAthlete) retired++; if (S.job?.careerId === "coach" || S.jobHistory.some(j => /Técnico|Auxiliar técnico/.test(j.title))) coaches++;
-    titles += S.log.filter(e => /campeão\(ã\) com o/.test(e.text)).length; injuries += S.log.filter(e => /Lesão/.test(e.text)).length;
+    titles += S.log.filter(e => /campe(ão|ã) com o/.test(e.text)).length; injuries += S.log.filter(e => /Lesão/.test(e.text)).length;
   }
   const out = { carreiras:n, aposentados:retired, viraramTecnico:coaches, assinaturasDeContrato:contracts, titulos:titles, lesoes:injuries };
   out.OK = retired >= n*0.6 && contracts > n && titles > 0 && injuries > 0;

@@ -33,7 +33,7 @@ function thoughtContext(){
   if (S.job && chance(0.5)) return "work";
   return p.stats.happiness > 65 ? "happy" : "work";
 }
-function currentThought(){ const ctx = thoughtContext(); return say(stablePick(DATA.thoughts[ctx] || DATA.thoughts.happy, ctx)); }
+function currentThought(){ const ctx = thoughtContext(); return gtx(say(stablePick(DATA.thoughts[ctx] || DATA.thoughts.happy, ctx))); }
 
 /* Comentário de alguém próximo (balão secundário na aba Vida). */
 function npcComment(){
@@ -49,3 +49,26 @@ function npcComment(){
   return { who: r.first, uid: r.uid, text: say(stablePick(DATA.npcLines[key], key + r.uid).replace("{me}", P().first)) };
 }
 function approachLine(kind){ return say(pick(DATA.approachLines[kind] || [""])); }
+
+/* ---------- Gênero no texto: "Fui preso(a)" → "Fui presa" ----------
+   gtx() troca as marcações "(a)" pela forma do gênero do personagem.
+   gtxPlayer() só faz isso nas frases que falam DO personagem (1ª pessoa
+   ou "Você…"), para não errar o gênero de outras pessoas citadas. */
+function gtx(text, g){
+  if (!text || typeof text !== "string" || text.indexOf("(") < 0) return text;
+  const F = (g || (S && S.player && S.player.gender)) === "F";
+  return text
+    .replace(/(\p{L}+)ão\(ã\)/gu, (m, a) => a + (F ? "ã" : "ão"))
+    .replace(/(\p{L}+)os\(as\)/gu, (m, a) => a + (F ? "as" : "os"))
+    .replace(/(\p{L}+)o\(a\)/gu, (m, a) => a + (F ? "a" : "o"))
+    .replace(/(\p{L}+)(or|ês)\(a\)/gu, (m, a, b) => a + b + (F ? "a" : ""))
+    .replace(/(\p{L}+)e\(a\)/gu, (m, a) => a + (F ? "a" : "e"))
+    .replace(/(?<!\p{L})([Uu])m\(a\)/gu, (m, u) => u + (F ? "ma" : "m"))
+    .replace(/(?<!\p{L})seu\(sua\)/gu, F ? "sua" : "seu")
+    .replace(/(?<!\p{L})(d?)ele\(a\)/gu, (m, d) => d + (F ? "ela" : "ele"));
+}
+const SELF_SENTENCE = /^[^\p{L}]*(?:Fui|Fiquei|Estou|Estava|Sou|Era|Me |Meu|Minha|Comecei|Virei|Nasci|Casei|Perdi|Ganhei|Consegui|Cumpri|Larguei|Pedi|Saí|Tenho|Você|Agora você|Agora sou|Eu |Entrei|Voltei|Fugi|Escapei|Levei|Acordei|Apaguei|Despistei|Matei|Admiti|Continuo|Recomecei|Desisti|Fiz|Passei|Sobrevivi|Cansei|Parei|Fechei|Encarei|Joguei|Estudei|Treinei|Prefiro|Não sou|Já sou|Seja )/u;
+function gtxPlayer(text){
+  if (!text || typeof text !== "string" || text.indexOf("(") < 0) return text;
+  return text.split(/(?<=[.!?…])\s+/).map(s => SELF_SENTENCE.test(s) ? gtx(s) : s).join(" ");
+}

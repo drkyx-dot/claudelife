@@ -36,8 +36,8 @@ function showEvent(){
   const person = who ? npcCard(who, { revealed: !!q.ctx.revealed, known: !!known }) : "";
   const talk = speech ? bubble(speech, who ? who.first : ev.title, "left", who ? (who.gender==="F"?"👩":"👨") : ev.emoji) : "";
   if (!document.querySelector("#modalRoot .overlay:not(.closing)")) Sound.play("alert"); else Sound.play("bubble");
-  modal(`<div class="emoji">${ev.emoji}</div><h3>${esc(ev.title)}</h3>${person}${talk}<p>${esc(say(text))}</p>
-    <div class="choices">${choices.map((c,i)=>`<button onclick="UI.choose(${i})">${esc(c.label)}${c.hint?`<small>${esc(c.hint)}</small>`:""}</button>`).join("")}</div>
+  modal(`<div class="emoji">${ev.emoji}</div><h3>${esc(ev.title)}</h3>${person}${talk}<p>${esc(gtxPlayer(say(text)))}</p>
+    <div class="choices">${choices.map((c,i)=>`<button onclick="UI.choose(${i})">${esc(gtx(c.label))}${c.hint?`<small>${esc(gtxPlayer(c.hint))}</small>`:""}</button>`).join("")}</div>
     ${left ? `<div class="oddsline" style="margin-top:10px">+${left} acontecimento(s) neste ano</div>` : ""}`, { locked:true });
 }
 /* Resultado de uma escolha com os deltas causados por ela. */
@@ -49,6 +49,6 @@ function showResult(res, before){
   }
   const dm = after.money - before.money; if (dm) chips.push(chip(`💰 ${signed(dm, true)}`, dm > 0 ? "good" : "bad"));
   const more = validHead();
-  modal(`<div class="result">${esc(res)}</div>${chips.length ? `<div class="chips" style="margin-bottom:14px">${chips.join("")}</div>` : ""}
+  modal(`<div class="result">${esc(gtxPlayer(res))}</div>${chips.length ? `<div class="chips" style="margin-bottom:14px">${chips.join("")}</div>` : ""}
     <div class="choices"><button class="primary" onclick="UI.next()">${more ? "Próximo acontecimento →" : "Continuar"}</button></div>`, { locked:true });
 }

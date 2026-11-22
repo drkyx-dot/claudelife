@@ -89,7 +89,7 @@ function trainArt(id, intense = false){
 function unlockNews(id, before){
   const after = mastery(id), d = byId(DATA.martialArts, id); let msg = "";
   for (const mv of DATA.moves.filter(m => m.art === id && m.req > before && m.req <= after)){
-    log(`${d.emoji} Aprendi um golpe novo: ${mv.name}.`, "good"); msg += ` 🆕 Golpe desbloqueado: ${mv.name}!`;
+    log(`${d.emoji} Aprendi um golpe novo: ${mv.name}.`, "good"); msg += ` 🆕 Aprendi um golpe novo: ${mv.name}!`;
   }
   if (rankIdx(after) > rankIdx(before)){
     const r = d.ranks[rankIdx(after)]; log(`${d.emoji} Graduação em ${d.name}: ${r}.`, "milestone"); msg += ` 🎖️ Nova graduação: ${r}.`;

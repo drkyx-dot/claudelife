@@ -102,7 +102,7 @@ function lifeTitle(){
   if (S2.countries.length >= 3) opts.push([55, "Cidadão(ã) do Mundo"]);
   if (S.flags.bankrupt) opts.push([50, "Falido(a) Resiliente"]);
   if (!opts.length) opts.push([10, (S.hist?.happy/Math.max(1,S.hist?.n||1)) > 60 ? "Alma Feliz" : "Vida Comum"]);
-  return opts.sort((a,b)=>b[0]-a[0])[0][1];
+  return gtx(opts.sort((a,b)=>b[0]-a[0])[0][1]); // "Milionário(a)" → forma do gênero
 }
 /* Capítulos da vida para a linha do tempo ilustrada do legado. */
 function lifeChapters(){

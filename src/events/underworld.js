@@ -54,7 +54,7 @@ EVENTS.push(
   speech:c=> say(`O chefe mandou você ${c.task}. Não faz merda.`),
   text:c=> `${S.org.name} te deu uma tarefa: ${c.task}.`,
   choices:c=>[
-    { label:"✅ Cumprir a tarefa", run:()=>{ if (chance(0.75 + S.crimeSkill/400)){ S.org.respect = clamp(S.org.respect + rint(6,12)); S.crimeSkill = clamp(S.crimeSkill+2); const g = priceOf(rint(1000,5000)); S.dirty += g; S.stats.dirtyEarned += g; return `Feito. Ganhei respeito e ${fmt(g)} sujos.`; } emit("siren"); if (chance(0.5)){ sendToPrison(rint(1,3), "tráfico de mercadoria ilegal"); return "Caí numa blitz com a encomenda."; } return "Deu errado e o chefe ficou puto." + (S.org.respect = clamp(S.org.respect-10), ""); } },
+    { label:"✅ Cumprir a tarefa", run:()=>{ if (chance(0.75 + S.crimeSkill/400)){ S.org.respect = clamp(S.org.respect + rint(6,12)); S.crimeSkill = clamp(S.crimeSkill+2); const g = priceOf(rint(1000,5000)); S.dirty += g; S.stats.dirtyEarned += g; return `Feito. Ganhei respeito e ${fmt(g)} sujos.`; } emit("siren"); if (chance(0.5)){ sendToPrison(rint(1,3), "tráfico de mercadoria ilegal", undefined, { chase:true }); return "Caí numa blitz com a encomenda."; } return "Deu errado e o chefe ficou puto." + (S.org.respect = clamp(S.org.respect-10), ""); } },
     { label:"✋ Recusar", hint:"respeito despenca", run:()=>{ S.org.respect = clamp(S.org.respect - 15); if (chance(0.2)) return "Recusei. Me lembraram, de um jeito nada gentil, quem manda." + injure(8, "O \"recado\" da organização", 0.2); return "Recusei. Fui ficando de escanteio."; } },
     { label:"🚪 Pedir para sair da organização", run:()=> leaveOrg().msg },
   ]},

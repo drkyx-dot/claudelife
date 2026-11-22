@@ -4,13 +4,21 @@
    mercado de colecionáveis.
    ===================================================================== */
 EVENTS.push(
-{ id:"ev_dark_awakening", emoji:"🌑", title:"Algo mudou em você", age:[18,90], weight:0, cond:()=> !dark().active && !inPrison(),
-  speech:()=> "Você não sentiu culpa. Sentiu… calma. Isso deveria te assustar.",
-  text:()=> "Depois do que aconteceu, uma voz fria passou a te acompanhar. O que fazer com ela?",
+{ id:"ev_dark_question", emoji:"🪞", title:"Diante do espelho", age:[18,120], weight:0, cond:()=> !dark().active && dark().answer !== "yes" && !inPrison(),
+  speech:()=> `Já são ${num(S.stats.kills)}. Seja honesto(a) com você mesmo(a).`,
+  text:()=> `Você já tirou ${num(S.stats.kills)} vidas. Na hora, o coração não disparou. Você está gostando disso?`,
   choices:()=>[
-    { label:"⚖️ Canalizar com um código: só quem escapou da justiça", hint:"abre o lado sombrio · impulso, suspeita e pistas", run:()=> awakenDark("code").msg },
-    { label:"🩸 Sem código, sem limites", hint:"karma despenca", run:()=> awakenDark("none").msg },
-    { label:"🧠 Procurar ajuda e enterrar isso", run:()=>{ addStress(-8); P().karma = clamp(P().karma + 6); return "Comecei terapia. A voz ficou mais baixa."; } },
+    { label:"🖤 Sim. É a única hora em que me sinto vivo(a).", hint:"abre um caminho escuro", run:()=>{ answerDark("yes"); return "Pela primeira vez, você não fugiu da resposta."; } },
+    { label:"😔 Não. Isso me assombra todas as noites.", run:()=>{ answerDark("no"); return "Você jurou para si mesmo(a) que foi a última vez."; } },
+    { label:"🧠 Não sei. Vou procurar ajuda.", run:()=>{ answerDark("unsure"); addStress(-6); P().karma = clamp(P().karma + 5); return "Marquei uma consulta com uma psicóloga. Não contei tudo, mas comecei."; } },
+  ]},
+{ id:"ev_dark_awakening", emoji:"🌑", title:"Sem volta", age:[18,90], weight:0, cond:()=> !dark().active && dark().answer === "yes" && !inPrison(),
+  speech:()=> "Você não sentiu culpa. Sentiu calma. Já não dá para fingir que foi acidente.",
+  text:()=> "Você matou de novo depois de admitir que gostava. Agora existe um padrão — e você sabe disso.",
+  choices:()=>[
+    { label:"⚖️ Seguir com um código: só quem escapou da justiça", hint:"libera o lado sombrio: impulso, suspeita e pistas", run:()=> awakenDark("code").msg },
+    { label:"🩸 Seguir sem código nenhum", hint:"karma despenca", run:()=> awakenDark("none").msg },
+    { label:"🛑 Parar enquanto ainda dá", run:()=>{ const D = dark(); D.answer = "no"; D.after = 0; D.askAgainAt = num(S.stats.kills) + 4; addStress(8); return "Você jogou fora o que guardava daquelas noites. Por enquanto, chega."; } },
   ]},
 { id:"ev_dark_urge", emoji:"🌘", title:"O impulso", age:[18,120], weight:0, cond:()=> dark().active && !inPrison(),
   speech:()=> say(pick(["Respira. Ninguém pode perceber.","Já faz tempo demais…","Sorria no trabalho. Só mais um dia."])),

@@ -12,6 +12,14 @@ function takeSnapshot(){
   return { ...p.stats, stress:p.stress, rep:p.reputation, fame:p.fame, vitality:p.vitality,
            money:S.money, nw:netWorth(), credit:S.credit };
 }
+/* Ordem fixa do tick anual (cada um lê o que os anteriores produziram). */
+const YEAR_STEPS = [
+  ["economia", economyYear], ["envelhecimento", agingYear], ["escola", schoolYear], ["carreira", careerYear], ["esporte", sportsYear],
+  ["autônomo", gigYear], ["lutas", martialYear], ["negócios", businessYear], ["ativos", assetsYear], ["coleção", collectYear],
+  ["finanças", Y => financeYear(Y)], ["organização", orgYear], ["relações", relationshipsYear], ["identidade", identityYear],
+  ["aparência", looksYear], ["pets", petsYear], ["saúde", healthYear], ["prisão", prisonYear], ["foragido", fugitiveYear],
+  ["lado sombrio", darkYear], ["consequências", consequencesYear], ["marcos", milestoneYear],
+];
 function ageUp(){
   // briga/fuga deixada pela metade (save recarregado): resolve antes de avançar
   if (S.flags.forcedDeath && P().alive){ const c = S.flags.forcedDeath; delete S.flags.forcedDeath; die(c); return true; }
@@ -21,12 +29,12 @@ function ageUp(){
   const before = S.snap || takeSnapshot();
   const Y = S.yearSummary = { income:0, taxes:0, expenses:0, lines:[] };
   P().age++;
-  economyYear(); // inflação, salários e fase do ciclo
   S.activitiesThisYear = 0; S.actCount = {};
-
-  agingYear(); schoolYear(); careerYear(); sportsYear(); gigYear(); martialYear(); businessYear(); assetsYear(); collectYear();
-  financeYear(Y); orgYear(); relationshipsYear(); identityYear(); looksYear(); petsYear(); healthYear(); prisonYear(); fugitiveYear(); darkYear();
-  consequencesYear(); milestoneYear();
+  // cada subsistema roda isolado: um erro num deles é registrado e o ano segue
+  for (const [name, fn] of YEAR_STEPS){
+    try { fn(Y); }
+    catch(e){ if (typeof Safety !== "undefined") Safety.report(e, "ano:" + name); else console.error(name, e); }
+  }
   S.hist = S.hist || { happy:0, health:0, n:0 };
   S.hist.happy += P().stats.happiness; S.hist.health += P().stats.health; S.hist.n++;
 

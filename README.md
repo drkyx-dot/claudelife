@@ -109,6 +109,24 @@ EVENTS.push({ id:"ev_meu", emoji:"🎲", title:"Título", age:[18,60],
 
 **Depois de qualquer mudança:** abra `?selftest` e `?balance`, e então rode `python3 tools/build.py`.
 
+## Estabilidade, idade/país, lado sombrio gradual e perseguição policial
+- **Save à prova de falhas:**
+  - `normalizeShape()` (`state/state.js`) força o tipo certo de cada campo antes de qualquer uso.
+  - `ui/safety.js` transforma cada clique numa transação: se der erro, o estado volta para antes da ação.
+  - O save recusa gravar estado inválido e mantém um backup (`.bak`) por slot.
+  - Se uma aba falhar ao desenhar, aparece um aviso no lugar da tela em branco.
+  - O painel vermelho de erro só aparece com `?debug`.
+- **Ano isolado:** cada subsistema do ano (`YEAR_STEPS` em `systems/sim.js`) roda isolado. Um erro num deles é registrado e o ano segue.
+- **Idade × país:** `DATA.ageRules` define maioridade, trabalho, direção, bebida e aposta por país. `ageOf()`, `minor()` e `ageReason()` estão em `state.js`.
+- **Gastos de menores:** pais pagam via `payBill()` e `costFx()`. A família pobre só tem acesso à rede pública.
+- **Lado sombrio:** com 3 mortes, surge a pergunta "está gostando?". Quem diz sim e mata mais 2 vezes chega ao ponto sem volta (`darkOnKill` em `systems/dark.js`).
+- **Perseguição:** `sendToPrison(..., { chase:true })` em flagrante ou mandado abre a fuga de rua (`startChase` em `systems/escape.js`). A dificuldade 0–7 vem da pena, da notoriedade, do policiamento do país e da proteção da organização.
+- **Texto:** `gtx()` e `gtxPlayer()` (`systems/speech.js`) trocam "preso(a)" pela forma do gênero do personagem, só nas frases sobre ele.
+- **Testes novos:**
+  - `?fuzz=1200&seed=N` clica em botões reais da interface.
+  - `?unit=` com `corruptTest`, `safetyTest`, `chaseTest`, `darkPathTest` e `ageTest`.
+  - Demo: `?demo=20&ui=chase`.
+
 ## v8: tela cheia, trabalho autônomo, esporte, coleção, armas e lado sombrio
 - **Tela cheia (`ui/fullscreen.js`):** usa a Fullscreen API nativa (inclusive o prefixo do Safari) com fallback para o "modo app" (`html.app-mode`). Nesse modo quem rola é o `<body>`, com overscroll travado: sem puxar para atualizar e sem zoom de pinça. Botão no cabeçalho, no hub e no menu; a tecla **F** também alterna.
 - **Trabalho autônomo (`systems/gigs.js`):** 11 atividades, incluindo duas adultas (18+) tratadas sem conteúdo explícito. A renda depende de atributos, habilidade, público e ritmo. O trabalho adulto tem riscos próprios: exposição, IST, cliente violento e polícia.

@@ -28,7 +28,7 @@ function renderFight(hitWho){
     <div class="flog">${F.lines.slice(-5).map((l, i, a) => `<div class="${i === a.length - 1 ? "new" : ""}">${esc(say(l))}</div>`).join("")}</div>`;
   if (F.over){
     const icon = F.oppOutcome === "death" ? "☠️" : F.myOutcome === "death" ? "⚰️" : F.result === "win" ? "🏆" : F.result === "fled" ? "🏃" : F.result === "draw" ? "🤝" : "🤕";
-    h += `<div class="fight-end"><div class="emoji">${icon}</div><div class="result">${esc(say(F.summary))}</div>
+    h += `<div class="fight-end"><div class="emoji">${icon}</div><div class="result">${esc(gtxPlayer(say(F.summary)))}</div>
       <div class="choices"><button class="primary" onclick="UI.fightDone()">${F.next ? "Próxima luta →" : "Continuar"}</button></div></div></div>`;
     return h;
   }
@@ -82,8 +82,9 @@ Object.assign(UI, {
     if (typeof Device !== "undefined" && !Device.guard()) return;
     const before = UI._mgBefore || takeSnapshot();
     const res = closeFight(); sanitize(); saveGame(true); render();
-    if (!P().alive){ modal(`<div class="emoji">🕊️</div><h3>Fim da jornada</h3><div class="result">${esc(res || "")}</div><div class="choices"><button class="primary" onclick="UI.close();UI.tab('life')">Ver certidão</button></div>`); return; }
+    if (!P().alive){ modal(`<div class="emoji">🕊️</div><h3>${esc(P().first)} morreu</h3><div class="result">${esc(res || "")}</div><div class="choices"><button class="primary" onclick="UI.close();UI.tab('life')">Ver certidão</button></div>`); return; }
     if (S.fight) return UI.fightOpen(); // próxima luta do torneio
+    if (S.escape) return UI.escapeOpen(); // a polícia chegou depois da briga
     UI._mgBefore = null; showResult(res || "A luta acabou.", before);
   },
   martial(){ modal(`<div class="emoji">🥋</div><h3>Academia de Lutas</h3><p class="muted">Energia ${ACT_LIMIT - S.activitiesThisYear}/${ACT_LIMIT} · até ${MAX_ENROLL} modalidades ao mesmo tempo. Treino intenso rende quase o dobro, mas machuca.</p>${martialPanel()}<div class="choices" style="margin-top:8px"><button onclick="UI.close()">Sair</button></div>`); },

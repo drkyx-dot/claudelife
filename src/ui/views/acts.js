@@ -14,10 +14,10 @@ const PLACES = [
   { id:"library",  ic:"📚", name:"Biblioteca",          acts:["read","meditate"] },
   { id:"bank",     ic:"🏦", name:"Banco / Corretora",   ui:[["Investimentos, crédito e dívidas","UI.close();UI.tab('assets')"]], minAge:18 },
   { id:"notary",   ic:"📜", name:"Cartório",            ui:[["Fazer testamento","UI.close();UI.willDialog()"]], minAge:18 },
-  { id:"dealer",   ic:"🚘", name:"Concessionária",      ui:[["Ver garagem e modelos","UI.close();UI.tab('assets')"]], acts:["license"], minAge:18 },
+  { id:"dealer",   ic:"🚘", name:"Concessionária",      ui:[["Ver garagem e modelos","UI.close();UI.tab('assets')"]], acts:["license"], minAge:16, rule:"drive" },
   { id:"realty",   ic:"🏘️", name:"Imobiliária",         ui:[["Comprar/alugar imóveis (qualquer país)","UI.close();UI.tab('assets')"]], minAge:18 },
   { id:"court",    ic:"⚖️", name:"Delegacia / Tribunal",ui:[["Pedir reabilitação criminal (limpar ficha)","UI.close();UI.do(expungeRecord)"]], minAge:18 },
-  { id:"night",    ic:"🎰", name:"Cassino / Clube noturno", acts:["casino","party","lottery"], minAge:18 },
+  { id:"night",    ic:"🎰", name:"Cassino / Clube noturno", acts:["casino","party","lottery"], minAge:18, rule:"drink" },
   { id:"airport",  ic:"✈️", name:"Aeroporto",           acts:["vacation"], ui:[["Emigrar para outro país","UI.close();UI.tab('assets')"]], minAge:18 },
   { id:"mall",     ic:"🛍️", name:"Shopping",            acts:["shopping","social","hobby"], minAge:10 },
   { id:"ngo",      ic:"🙌", name:"ONG / Comunidade",    acts:["volunteer","networking"] },
@@ -28,8 +28,8 @@ const PLACES = [
 function viewActs(){
   const a = P().age, energy = ACT_LIMIT - S.activitiesThisYear;
   let h = `<div class="card hero"><h2>🗺️ ${esc(P().city)} <span class="tag">⚡ ${energy}/${ACT_LIMIT} de energia</span></h2>
-    <div class="grid2">${PLACES.filter(p => a >= (p.minAge||0)).map(p=>`<button class="action" onclick="UI.place('${p.id}')"><b>${p.ic} ${p.name}</b><span>${[...(p.acts||[]).map(id=>byId(ACTIVITIES,id)?.name).filter(Boolean), ...(p.ui||[]).map(u=>u[0])].slice(0,3).join(" · ")}</span></button>`).join("")}</div></div>`;
-  const list = ACTIVITIES.filter(x => a >= x.minAge && (!x.cond || x.cond()));
+    <div class="grid2">${PLACES.filter(p => a >= Math.max(p.minAge||0, p.rule ? ageOf(p.rule) : 0)).map(p=>`<button class="action" onclick="UI.place('${p.id}')"><b>${p.ic} ${p.name}</b><span>${[...(p.acts||[]).map(id=>byId(ACTIVITIES,id)?.name).filter(Boolean), ...(p.ui||[]).map(u=>u[0])].slice(0,3).join(" · ")}</span></button>`).join("")}</div></div>`;
+  const list = ACTIVITIES.filter(x => a >= actMinAge(x) && (!x.cond || x.cond()));
   h += `<div class="card"><h2>🎯 Todas as atividades</h2><div class="oddsline" style="margin:-4px 0 10px">Repetir a mesma atividade no ano rende cada vez menos. Diversifique.</div>
     <div class="grid2">${list.map(x=>actButton(x, energy)).join("")}</div></div>`;
   h += `<div class="card"><h2>🎨 Talentos</h2>${bar("🎵 Música", P().talents.music, "var(--accent)")}${bar("🎭 Atuação", P().talents.acting, "var(--accent)")}${bar("🏅 Esporte", P().talents.sport, "var(--accent)")}
@@ -40,7 +40,7 @@ function viewActs(){
 }
 function actButton(x, energy){
   const a = P().age, n = num(S.actCount[x.id]), eff = Math.round(dim(x.id)*100);
-  return `<button class="action" ${energy<=0?"disabled":""} onclick="UI.do(()=>doActivity('${x.id}'))">${n?`<span class="odds ${eff>=60?"warn":"bad"}">${eff}%</span>`:""}<b>${x.emoji} ${x.name}</b><span>${x.desc}${x.cost&&a>=18?` · ${fmt(priceOf(x.cost))}`:""}</span></button>`;
+  return `<button class="action" ${energy<=0?"disabled":""} onclick="UI.do(()=>doActivity('${x.id}'))">${n?`<span class="odds ${eff>=60?"warn":"bad"}">${eff}%</span>`:""}<b>${x.emoji} ${x.name}</b><span>${x.desc}${x.cost&&adult()?` · ${fmt(priceOf(x.cost))}`:""}</span></button>`;
 }
 function crimeCard(energy){
   const a = P().age, O = S.org;

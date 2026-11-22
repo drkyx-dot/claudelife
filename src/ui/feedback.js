@@ -13,7 +13,7 @@
 const BOOT_STEPS = ["Inicializando o motor de simulação…","Gerando árvore genealógica…","Sorteando país, cidade e família…","Calculando a economia global…","Carregando academias e submundo…","Treinando os guardas do presídio…","Afinando os efeitos sonoros…","Preparando seu destino…"];
 function showLoading(steps, work, done, opts = {}){
   const el = $("#loading");
-  if (!el || /selftest|balance|demo|acttest/.test(location.search)){ work && work(); done && done(); return; }
+  if (!el || /selftest|balance|demo|acttest|fuzz=/.test(location.search)){ work && work(); done && done(); return; }
   const tips = DATA.tips.slice().sort(() => Math.random() - 0.5); let tipI = 0;
   el.innerHTML = `<div class="ld-inner">
       <div class="ld-logo"><span class="ld-mark">🧬</span><b>Claudi<span>Life</span></b></div>

@@ -83,7 +83,7 @@ function buyWeapon(id){
   const price = priceOf(d.price) * (d.legal === "illegal" ? rfloat(1, 1.4) : 1);
   if (!canAfford(price)) return R(false, `Custa ${fmt(price)}.`);
   addMoney(-Math.round(price));
-  if (d.legal === "illegal"){ addNoto(4); if (chance(0.08)){ S.record.push({ crime:"porte ilegal de arma", age:P().age, years:0 }); sendToPrison(rint(1, 3), "porte ilegal de arma"); return R(false, "O vendedor era informante. Preso(a) em flagrante."); } }
+  if (d.legal === "illegal"){ addNoto(4); if (chance(0.08)){ sendToPrison(rint(1, 3), "porte ilegal de arma", undefined, { chase:true }); return R(false, S.escape?.mode === "street" ? "🚨 O vendedor era informante e a polícia apareceu! Fuja ou se renda." : "O vendedor era informante. Preso(a) em flagrante."); } }
   arsenal().push({ uid:uid(), id, registered: d.legal === "license" });
   log(`${d.emoji} Comprei: ${d.name}.`, d.legal === "illegal" ? "bad" : "");
   return R(true, `${d.name} adquirida. Ela aparece como golpe nas brigas.`);

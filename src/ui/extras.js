@@ -44,7 +44,7 @@ function collectionCard(){
     <div class="choices" style="margin-top:8px"><button onclick="UI.collectShop()">🔨 Leilões, antiquários e mercado negro</button></div></div>`;
 }
 function darkPanel(){
-  const D = S.dark; if (!D || !D.active) return P().age >= 18 ? `<div class="row"><div class="grow"><div class="t">🌑 Lado sombrio</div><div class="s">Um caminho sem volta: caçar alvos, esconder pistas, viver uma vida dupla.</div></div><button class="btn sm danger" onclick="UI.darkIntro()">Despertar</button></div>` : "";
+  const D = S.dark; if (!D || !D.active) return D && D.answer === "yes" ? `<div class="oddsline">🌑 Você admitiu que gosta disso. Faltam ${Math.max(0, DARK_AFTER_YES - num(D.after))} morte(s) para não ter mais volta.</div>` : ""; // só aparece pelo caminho gradual
   const why = huntBlock();
   return `${label(`🌑 Lado sombrio · ${D.code === "code" ? "com código" : "sem código"} · ${D.kills} vítima(s)`)}
     <div class="bars">${bar("Impulso", D.urge, "var(--accent-2)")}${bar("Suspeita policial", D.heat, "var(--bad)")}${bar("Disfarce", darkCover(), "var(--good)")}${bar("Discrição", D.stealth, "var(--info)")}</div>
@@ -77,11 +77,6 @@ Object.assign(UI, {
       ${DATA.armory.filter(d => black ? d.legal === "illegal" : d.legal !== "illegal").map(d => armoryRow(d, black)).join("")}
       ${arsenal().length ? `${label("Meu arsenal")}${arsenal().map(w => { const d = byId(DATA.armory, w.id); return `<div class="row"><div class="grow s">${d.emoji} ${d.name}${w.registered ? " · registrada em seu nome" : ""}</div><button class="btn sm" onclick="UI.close();UI.do(()=>discardWeapon('${w.uid}'))">Descartar</button></div>`; }).join("")}` : ""}
       <div class="choices" style="margin-top:10px"><button onclick="UI.close()">Fechar</button></div>`);
-  },
-  darkIntro(){
-    modal(`<div class="emoji">🌑</div><h3>O lado sombrio</h3><p>Você passará a ter <b>impulso</b> (cresce todo ano), <b>suspeita policial</b> e <b>pistas</b>. Uma vida "normal" (emprego, família) é o seu disfarce. Se a força-tarefa juntar provas: pena máxima.</p>
-      <div class="choices"><button class="danger" onclick="UI.close();UI.do(()=>awakenDark('code'))">⚖️ Com código: só quem escapou da justiça</button>
-      <button class="danger" onclick="UI.close();UI.do(()=>awakenDark('none'))">🩸 Sem código</button><button onclick="UI.close()">Não. Melhor não.</button></div>`);
   },
   hunt(){
     const why = huntBlock(); if (why){ toast(why); return; }

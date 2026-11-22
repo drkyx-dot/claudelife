@@ -22,7 +22,7 @@ EVENTS.push(
 { id:"ev_investigation", emoji:"🕵️", title:"Investigação policial", age:[14,90], weight:()=>P().notoriety>25 && !inPrison() ? P().notoriety/20 : 0, cd:3,
   text:()=> "A polícia está investigando você por crimes antigos.",
   choices:()=>[
-    { label:"Contratar advogado", hint:"caro", run:()=>{ addMoney(-priceOf(8000)); if (chance(0.65)) { addNoto(-15); return "Meu advogado arquivou o caso."; } sendToPrison(rint(1,4), "crimes antigos"); return "Mesmo assim, fui condenado(a)."; } },
+    { label:"Contratar advogado", hint:"caro", run:()=>{ const pay = costFx(priceOf(8000), "o advogado"); if (chance(0.65)) { addNoto(-15); return "Meu advogado arquivou o caso." + pay; } sendToPrison(rint(1,4), "crimes antigos"); return "Mesmo assim, fui condenado(a)."; } },
     { label:"Cooperar e confessar", run:()=>{ sendToPrison(rint(1,3), "confissão"); P().karma = clamp(P().karma+10); return "Confessei e peguei pena reduzida."; } },
     { label:"Fugir do país", hint:"muda de país", run:()=>{ if (chance(0.5)){ emigrate(pick(DATA.countries.filter(c=>c.id!==P().country)).id, true); addNoto(-30); return `Fugi para ${country().name}!`; } sendToPrison(rint(3,8), "tentativa de fuga"); return "Fui pego(a) no aeroporto."; } },
   ]}

@@ -20,7 +20,7 @@ EVENTS.push(
   choices:c=>[
     { label:"⚖️ Cobrar na Justiça (pequenas causas)", run:()=> chance(0.55) ? (addMoney(c.amt), "Ganhei a causa e recebi.") : "Processo arquivado: nunca vi o dinheiro." + fx({happiness:-3}) },
     { label:"📣 Expor o caloteiro nas redes", run:()=>{ S.gig.audience += rint(5, 30); return chance(0.3) ? "Viralizou e ele pagou correndo." + fx({money:c.amt}) : "Ganhei seguidores, mas nada de dinheiro."; } },
-    { label:"🙈 Deixar pra lá", run:()=>{ addMoney(-0); addStress(4); return "Prejuízo assumido."; } },
+    { label:"🙈 Deixar pra lá", run:()=>{ addStress(4); return "Engoli o prejuízo."; } },
   ]},
 { id:"ev_gig_viral", emoji:"🚀", title:"Viralizou!", age:[12,99], weight:0, cond:()=>!!S.gig,
   text:()=> "Um vídeo seu explodiu. Milhões de visualizações em dois dias.",
@@ -78,14 +78,14 @@ EVENTS.push(
     { label:"🆓 Ficar livre no mercado", run:()=>{ S.job.contract = 1; S.job.contractMult = 0.8; return "Vou esperar uma proposta melhor (salário menor enquanto isso)."; } },
   ]},
 { id:"ev_sport_retire", emoji:"👟", title:"Pendurar as chuteiras?", age:[14,80], weight:0, cond:()=> isAthlete(),
-  text:c=> c.forced ? "O corpo não aguenta mais o alto nível. É hora de parar." : "Seu corpo dá sinais de cansaço. Os clubes oferecem contratos menores.",
+  text:c=> c.forced ? "O corpo não aguenta mais o alto nível. Chegou a hora de parar." : "Seu corpo dá sinais de cansaço. Os clubes oferecem contratos menores.",
   speech:()=> say("Foi uma carreira linda, mas todo mundo tem seu tempo."),
   choices:c=>[
     ...(c.forced ? [] : [{ label:"💪 Jogar mais uma temporada", run:()=>{ S.job.contract = 1; S.job.contractMult = Math.max(0.5, num(S.job.contractMult,1)*0.75); return "Mais um ano. Pelo amor ao esporte."; } }]),
     { label:"📋 Aposentar e virar técnico(a)", run:()=>{ S.flags.exAthlete = true; achieve("retiredpro", "Aposentadoria do esporte profissional"); return hireDirect("coach", S.job.level >= 2 ? 1 : 0); } },
     { label:"🎙️ Aposentar e virar comentarista", run:()=>{ S.flags.exAthlete = true; return hireDirect("commentator", P().fame > 40 ? 1 : 0); } },
     { label:"🔎 Aposentar e virar olheiro(a)", run:()=>{ S.flags.exAthlete = true; return hireDirect("scout", 0); } },
-    { label:"🏖️ Só aposentar", run:()=>{ S.flags.exAthlete = true; endJob("Aposentadoria esportiva"); log("👟 Encerrei minha carreira de atleta.", "milestone"); return "Fim de uma era."; } },
+    { label:"🏖️ Só aposentar", run:()=>{ S.flags.exAthlete = true; endJob("Aposentadoria esportiva"); log("👟 Encerrei minha carreira de atleta.", "milestone"); return "Pendurei as chuteiras."; } },
   ]},
 );
 /* Exposição de trabalho adulto: relações, emprego formal e reputação. */

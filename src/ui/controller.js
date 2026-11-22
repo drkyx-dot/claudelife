@@ -18,6 +18,7 @@ const UI = {
     Sound.play("year"); floatDiff(before, takeSnapshot());
     if (!P().alive){ closeModal(); pageTop(); toast(`${P().first} faleceu aos ${P().age} anos.`); return; }
     yearBadge();
+    if (S.escape){ UI._mgBefore = before; return setTimeout(UI.escapeOpen, REDUCED() ? 0 : 380); } // a polícia chegou durante o ano
     if (S.queue.length) setTimeout(showEvent, REDUCED() ? 0 : 380); // deixa o selo do ano aparecer antes
   },
   choose(i){
@@ -27,7 +28,7 @@ const UI = {
     saveGame(true); render();
     // a escolha abriu uma briga ou uma fuga: o minigame assume e depois volta ao fluxo
     if (P().alive && (S.fight || S.escape)){ UI._mgBefore = before; return S.fight ? UI.fightOpen() : UI.escapeOpen(); }
-    if (!P().alive){ modal(`<div class="emoji">🕊️</div><h3>Fim da jornada</h3><div class="result">${esc(res)}</div><div class="choices"><button class="primary" onclick="UI.close();UI.tab('life')">Ver certidão</button></div>`); return; }
+    if (!P().alive){ modal(`<div class="emoji">🕊️</div><h3>${esc(P().first)} morreu</h3><div class="result">${esc(res)}</div><div class="choices"><button class="primary" onclick="UI.close();UI.tab('life')">Ver certidão</button></div>`); return; }
     showResult(res, before);
   },
   next(){ if (typeof Device !== "undefined" && !Device.guard()) return; showEvent(); },
@@ -189,10 +190,10 @@ const UI = {
 Object.assign(UI, {
   place(id){
     const p = PLACES.find(x=>x.id===id), a = P().age, energy = ACT_LIMIT - S.activitiesThisYear;
-    const acts = (p.acts||[]).map(i=>byId(ACTIVITIES,i)).filter(x => x && a >= x.minAge && (!x.cond || x.cond()));
+    const acts = (p.acts||[]).map(i=>byId(ACTIVITIES,i)).filter(x => x && a >= actMinAge(x) && (!x.cond || x.cond()));
     Sound.play("bubble");
     modal(`<div class="emoji">${p.ic}</div><h3>${p.name}</h3><p class="muted">${esc(P().city)} · energia ${energy}/${ACT_LIMIT}</p>
-      ${acts.length ? `<div class="grid2">${acts.map(x=>`<button class="action" ${energy<=0?"disabled":""} onclick="UI.close();UI.do(()=>doActivity('${x.id}'))"><b>${x.emoji} ${x.name}</b><span>${x.desc}${x.cost&&a>=18?` · ${fmt(priceOf(x.cost))}`:""}</span></button>`).join("")}</div>` : ""}
+      ${acts.length ? `<div class="grid2">${acts.map(x=>`<button class="action" ${energy<=0?"disabled":""} onclick="UI.close();UI.do(()=>doActivity('${x.id}'))"><b>${x.emoji} ${x.name}</b><span>${x.desc}${x.cost&&adult()?` · ${fmt(priceOf(x.cost))}`:""}</span></button>`).join("")}</div>` : ""}
       <div class="choices" style="margin-top:10px">${(p.ui||[]).map(([l,js])=>`<button onclick="${js}">${l}</button>`).join("")}<button onclick="UI.close()">Sair</button></div>`);
   },
   willDialog(){

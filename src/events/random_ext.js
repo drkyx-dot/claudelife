@@ -53,8 +53,8 @@ EVENTS.push(
   setup:()=>({ amt: priceOf(rint(200, 1200)) }),
   text:c=> `Seu celular caiu e a tela estourou. Um novo custa ${fmt(c.amt)}.`,
   choices:c=>[
-    { label:"🛒 Comprar um novo", run:()=> "Celular novo na mão." + fx({money:-c.amt, happiness:2}) },
-    { label:"🔧 Trocar só a tela", run:()=> "Ficou quase novo." + fx({money:-Math.round(c.amt*0.3)}) },
+    { label:"🛒 Comprar um novo", run:()=> "Celular novo na mão." + costFx(c.amt, "o celular novo", { happiness:2 }) },
+    { label:"🔧 Trocar só a tela", run:()=> "Ficou quase novo." + costFx(c.amt*0.3, "o conserto") },
     { label:"🤷 Usar trincado mesmo", run:()=> "Vou cortar o dedo um dia, mas tudo bem." + fx({happiness:-2}) },
   ]},
 { id:"ev_identity_theft", emoji:"🕵️", title:"Golpe no seu nome", age:[18,95], weight:()=> 0.7 * country().crime, cd:8,

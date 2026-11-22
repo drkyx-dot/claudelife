@@ -37,7 +37,7 @@ EVENTS.push(
   text:()=> "Você teve uma crise de ansiedade no meio do dia. O corpo está cobrando.",
   choices:()=>[
     { label:"Tirar um período sabático", hint:"sem salário por um tempo", run:()=>{ addStress(-30); if (S.job){ addMoney(-Math.round(S.job.salary*0.3)); S.job.perf = clamp(S.job.perf-10); } return "Parei para cuidar de mim." + fx({happiness:8}); } },
-    { label:"Começar terapia", run:()=>{ addStress(-18); return "Estou aprendendo a lidar." + fx({money:-priceOf(1200), happiness:4}); } },
+    { label:"Começar terapia", run:()=>{ addStress(-18); return "Estou aprendendo a lidar." + costFx(priceOf(1200), "a terapia", { happiness:4 }); } },
     { label:"Ignorar e seguir", run:()=>{ addStress(5); return "Engoli o choro." + fx({happiness:-6}) + injure(6, "O colapso nervoso", 0.1); } },
   ]},
 { id:"ev_parent_move", emoji:"👵", title:"Pai/Mãe precisa de cuidados", age:[30,80], weight:()=> parents().some(p=>p.age>=78 && !p.livesWithMe) && P().age >= 30 ? 1.3 : 0, cd:6,
@@ -51,7 +51,7 @@ EVENTS.push(
 { id:"ev_sport_injury", emoji:"🦵", title:"Lesão em campo", age:[16,40], weight:()=> S.job?.careerId === "athlete" ? 1.8 : 0, cd:2,
   text:()=> "Você rompeu um ligamento em plena temporada.",
   choices:()=>[
-    { label:"Cirurgia e recuperação completa", hint:"perde a temporada", run:()=>{ S.job.perf = clamp(S.job.perf-15); return "Voltei mais devagar, mas inteiro(a)." + fx({money:-priceOf(3000)}) + injure(8, "A lesão esportiva", 0.15); } },
+    { label:"Cirurgia e recuperação completa", hint:"perde a temporada", run:()=>{ S.job.perf = clamp(S.job.perf-15); return "Voltei mais devagar, mas inteiro(a)." + costFx(priceOf(3000), "a cirurgia") + injure(8, "A lesão esportiva", 0.15); } },
     { label:"Infiltração e jogar a final", hint:"risco de sequela", run:()=>{ addFame(6); return "Jogamos a final!" + injure(18, "Jogar lesionado(a)", 0.7); } },
   ]},
 );

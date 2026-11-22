@@ -4,7 +4,8 @@
    com busca e filtros por categoria. */
 const LOG_FILTERS = [["all","Tudo"],["milestone","Marcos"],["good","Positivos"],["bad","Negativos"],["work","Trabalho"],["money","Dinheiro"],["love","Amor"],["health","Saúde"],["school","Estudos"],["crime","Crime"]];
 
-function occupation(){
+function occupation(){ return gtx(occupationRaw()); }
+function occupationRaw(){
   const p = P();
   if (inPrison()) return `⛓️ Preso(a) — ${S.prison.life ? "prisão perpétua" : S.prison.years + " ano(s) restantes"} (${esc(S.prison.crime)})`;
   if (S.wanted) return `🚨 Foragido(a) da Justiça${S.wanted.fakeId ? " · identidade falsa" : ""}`;

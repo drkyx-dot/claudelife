@@ -58,7 +58,7 @@ const HUB_VIEWS = {
     return `${hubBack()}<h2 class="hub-h">🏛️ Hall dos legados</h2>
       <div class="statgrid">${[["🧬 Vidas vividas", L.length],["🏆 Melhor pontuação", best ? `${best.score} · ${esc(best.name)}` : "—"],["⏳ Vida mais longa", oldest ? `${oldest.age} anos · ${esc(oldest.name)}` : "—"],["🎖️ Conquistas únicas", ach.length]]
         .map(([k,v]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("")}</div>
-      ${ach.length ? `<div class="section-label">Conquistas desbloqueadas</div><div class="chips">${ach.map(([t,n]) => chip(`${esc(t)}${n > 1 ? ` ×${n}` : ""}`, "good")).join("")}</div>` : ""}
+      ${ach.length ? `<div class="section-label">Conquistas</div><div class="chips">${ach.map(([t,n]) => chip(`${esc(t)}${n > 1 ? ` ×${n}` : ""}`, "good")).join("")}</div>` : ""}
       <div class="section-label">Vidas passadas</div>
       ${L.length ? L.map(l => `<div class="hub-slot"><div class="hs-av">${avatarFor(Math.min(l.age, 70), l.gender, l.tone)}</div><div class="grow"><div class="t">${esc(l.name)} <span class="muted s">${l.born}–${l.died}</span></div>
         <div class="s">🏅 ${esc(l.title || "—")} · ${l.score} pts · ${l.ach} conquista(s)</div><div class="s muted">${flagOf(l.country)} ${esc(l.cls || "")} · ${esc(l.cause || "")}</div></div></div>`).join("") : `<div class="empty">Quando um personagem morrer, a história dele fica aqui.</div>`}`;

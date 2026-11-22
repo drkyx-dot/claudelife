@@ -87,3 +87,19 @@ DATA.traits = [
   { id:"spendthrift",name:"Gastador",        desc:"+felicidade, +gastos",         opp:"frugal" },
   { id:"honest",     name:"Íntegro",         desc:"+reputação, crimes pesam mais",opp:null },
 ];
+
+/* Idades legais por país (simplificado, valores típicos de cada lei):
+   adult = maioridade civil · work = idade mínima para trabalho (aprendiz/meio período)
+   drive = carteira de motorista · drink = bebida alcoólica · gamble = cassino/loteria.
+   Usadas por ageOf() em state/state.js. */
+DATA.ageRules = {
+  BR:{ adult:18, work:14, drive:18, drink:18, gamble:18 },
+  PT:{ adult:18, work:16, drive:18, drink:18, gamble:18 },
+  US:{ adult:18, work:14, drive:16, drink:21, gamble:21 },
+  JP:{ adult:18, work:15, drive:18, drink:20, gamble:20 },
+  DE:{ adult:18, work:15, drive:18, drink:18, gamble:18 },
+  MX:{ adult:18, work:15, drive:18, drink:18, gamble:18 },
+  NG:{ adult:18, work:15, drive:18, drink:18, gamble:18 },
+  IN:{ adult:18, work:14, drive:18, drink:21, gamble:21 },
+};
+DATA.ageRuleNames = { adult:"maioridade", work:"trabalhar", drive:"dirigir", drink:"beber", gamble:"apostar" };

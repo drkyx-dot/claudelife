@@ -55,6 +55,6 @@ EVENTS.push(
   text:()=> "Uma van parou do seu lado. Homens encapuzados tentaram te puxar para dentro.",
   choices:()=>[
     { label:"🥊 Reagir", hint:"abre o combate", run:()=>{ startFight("robbery", { amt: priceOf(5000) }); return "Gritei e parti pra cima."; } },
-    { label:"🏃 Correr para a segurança", run:()=> chance(0.6) ? "O segurança da família apareceu a tempo." + fx({happiness:-5}) + (addStress(15), "") : "Me pegaram. Fiquei 3 dias no cativeiro até pagarem o resgate." + fx({money:-Math.min(Math.max(0,S.money), priceOf(200000)), happiness:-20}) + (addStress(30), "") },
+    { label:"🏃 Correr para a segurança", run:()=> chance(0.6) ? "O segurança da família apareceu a tempo." + fx({happiness:-5}) + (addStress(15), "") : "Me pegaram. Fiquei 3 dias no cativeiro até pagarem o resgate." + (minor() ? payBill(priceOf(200000), "o resgate") : fx({money:-Math.min(Math.max(0,S.money), priceOf(200000))})) + fx({happiness:-20}) + (addStress(30), "") },
   ]},
 );
