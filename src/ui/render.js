@@ -14,7 +14,7 @@ function hudSkeleton(){
         <div class="avatar" data-k="avatar"></div>
         <div class="idtext"><h1 data-k="name"></h1><div class="sub" data-k="sub"></div></div>
         <div class="money"><span data-k="money"></span><small data-k="nw"></small></div>
-        ${fsButton()}<button class="iconbtn" onclick="UI.menu()" aria-label="Menu">☰</button>
+        <div class="hudbtns">${fsButton()}<button class="iconbtn" onclick="UI.menu()" aria-label="Menu">☰</button></div>
       </div>
       <div class="bars">${HUD_BARS.map(([k,l])=>`<div class="bar" data-bar="${k}"><div class="lbl"><span>${l}</span><b data-v></b></div><div class="track"><div class="fill"></div><i class="cap"></i></div><span class="delta"></span></div>`).join("")}</div>
       <div class="substats" data-k="substats"></div>

@@ -242,3 +242,7 @@ html.is-fullscreen body{background:var(--bg)}
 .idrow .fsbtn{margin-right:-4px}
 .hub-top{display:flex;justify-content:flex-end}
 .hub-top .hub-back{display:grid;place-items:center}
+
+/* botões do cabeçalho (tela cheia + menu) sempre juntos, sem quebrar linha */
+.hudbtns{display:flex;gap:6px;flex:none;align-self:flex-start}
+.idrow .hudbtns .fsbtn{margin-right:0}

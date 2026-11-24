@@ -1,0 +1,4 @@
+# Normaliza fins de linha e marca o arquivo gerado
+* text=auto eol=lf
+*.png binary
+dist/claudilife.html linguist-generated=true

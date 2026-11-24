@@ -1,5 +1,7 @@
-# não publicar ferramentas de build nem arquivos locais
+# o site publicado só precisa de index.html, src/, icons/, manifest e dist/
 tools/
+docs/
 README.md
+CHANGELOG.md
 *.log
 .DS_Store
